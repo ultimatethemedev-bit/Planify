@@ -28,11 +28,16 @@ export function Settings() {
     events, 
     addEvent, 
     updateEvent, 
-    deleteEvent 
+    deleteEvent,
+    shiftTemplates,
+    updateShiftTemplate,
+    weekNumberConfig,
+    setWeekNumberConfig
   } = useSettingsStore()
   
   const [isLoading, setIsLoading] = useState(false)
   const [hasHoursChanged, setHasHoursChanged] = useState(false)
+  const [hasTemplatesChanged, setHasTemplatesChanged] = useState(false)
   const [showEventForm, setShowEventForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CommercialEvent | null>(null)
   
@@ -213,6 +218,103 @@ export function Settings() {
           >
             {isLoading ? 'Enregistrement...' : hasHoursChanged ? 'Enregistrer' : 'Enregistré ✓'}
           </button>
+        </div>
+      </section>
+      
+      {/* Shift Templates */}
+      <section className="px-6 mb-8">
+        <h2 className="text-lg font-semibold mb-4 font-heading">Templates horaires</h2>
+        <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50">
+          <p className="text-sm text-muted-foreground mb-4">
+            Définissez vos créneaux types pour les appliquer rapidement dans le planning.
+          </p>
+          <div className="space-y-4">
+            {shiftTemplates.map((template, index) => (
+              <div key={index} className="flex items-center gap-4">
+                <input
+                  type="text"
+                  value={template.name}
+                  onChange={(e) => {
+                    updateShiftTemplate(index, { ...template, name: e.target.value })
+                    setHasTemplatesChanged(true)
+                  }}
+                  className="w-32 px-3 py-2 text-sm font-medium rounded-lg border border-border bg-input"
+                  placeholder="Nom"
+                />
+                <div className="flex items-center gap-2 flex-1">
+                  <input
+                    type="time"
+                    value={template.startTime}
+                    onChange={(e) => {
+                      updateShiftTemplate(index, { ...template, startTime: e.target.value })
+                      setHasTemplatesChanged(true)
+                    }}
+                    className="w-28 px-3 py-2 text-sm rounded-lg border border-border bg-input"
+                  />
+                  <span className="text-muted-foreground">-</span>
+                  <input
+                    type="time"
+                    value={template.endTime}
+                    onChange={(e) => {
+                      updateShiftTemplate(index, { ...template, endTime: e.target.value })
+                      setHasTemplatesChanged(true)
+                    }}
+                    className="w-28 px-3 py-2 text-sm rounded-lg border border-border bg-input"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <button 
+            onClick={() => setHasTemplatesChanged(false)}
+            disabled={!hasTemplatesChanged}
+            className={`w-full mt-6 py-3 px-4 rounded-xl font-semibold shadow-sm transition-all ${
+              hasTemplatesChanged 
+                ? 'bg-primary text-primary-foreground active:scale-95' 
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
+            }`}
+          >
+            {hasTemplatesChanged ? 'Enregistrer' : 'Enregistré ✓'}
+          </button>
+        </div>
+      </section>
+      
+      {/* Week Number Config */}
+      <section className="px-6 mb-8">
+        <h2 className="text-lg font-semibold mb-4 font-heading">Numérotation des semaines</h2>
+        <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50">
+          <p className="text-sm text-muted-foreground mb-4">
+            Définissez le numéro de la semaine actuelle. Les semaines suivantes seront automatiquement incrémentées.
+          </p>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-2">Date de référence</label>
+              <input
+                type="date"
+                value={weekNumberConfig.referenceDate}
+                onChange={(e) => setWeekNumberConfig({ 
+                  ...weekNumberConfig, 
+                  referenceDate: e.target.value 
+                })}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-input"
+              />
+            </div>
+            <div className="w-32">
+              <label className="block text-sm font-medium mb-2">N° de semaine</label>
+              <input
+                type="number"
+                min="1"
+                max="52"
+                value={weekNumberConfig.referenceWeekNumber}
+                onChange={(e) => setWeekNumberConfig({ 
+                  ...weekNumberConfig, 
+                  referenceWeekNumber: parseInt(e.target.value) || 1 
+                })}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-input text-center"
+              />
+            </div>
+          </div>
         </div>
       </section>
       

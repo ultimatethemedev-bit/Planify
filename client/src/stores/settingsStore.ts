@@ -26,9 +26,22 @@ export interface CommercialEvent {
   color: string
 }
 
+export interface ShiftTemplate {
+  name: string
+  startTime: string
+  endTime: string
+}
+
+export interface WeekNumberConfig {
+  referenceDate: string  // Date de référence (ex: '2025-11-24')
+  referenceWeekNumber: number  // Numéro de semaine pour cette date (ex: 42)
+}
+
 interface SettingsState {
   storeHours: StoreHours
   events: CommercialEvent[]
+  shiftTemplates: ShiftTemplate[]
+  weekNumberConfig: WeekNumberConfig
   isLoading: boolean
   error: string | null
   setStoreHours: (hours: StoreHours) => void
@@ -37,6 +50,9 @@ interface SettingsState {
   addEvent: (event: CommercialEvent) => void
   updateEvent: (id: string, data: Partial<CommercialEvent>) => void
   deleteEvent: (id: string) => void
+  setShiftTemplates: (templates: ShiftTemplate[]) => void
+  updateShiftTemplate: (index: number, template: ShiftTemplate) => void
+  setWeekNumberConfig: (config: WeekNumberConfig) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
 }
@@ -51,11 +67,24 @@ const defaultStoreHours: StoreHours = {
   sunday: { isOpen: true, openTime: '10:00', closeTime: '19:00' },
 }
 
+const defaultShiftTemplates: ShiftTemplate[] = [
+  { name: 'Matin', startTime: '10:00', endTime: '14:00' },
+  { name: 'Après-midi', startTime: '14:00', endTime: '21:00' },
+  { name: 'Journée', startTime: '10:00', endTime: '21:00' },
+]
+
+const defaultWeekNumberConfig: WeekNumberConfig = {
+  referenceDate: '2025-11-24',
+  referenceWeekNumber: 48,
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       storeHours: defaultStoreHours,
       events: [],
+      shiftTemplates: defaultShiftTemplates,
+      weekNumberConfig: defaultWeekNumberConfig,
       isLoading: false,
       error: null,
       
@@ -80,6 +109,16 @@ export const useSettingsStore = create<SettingsState>()(
       deleteEvent: (id) => set((state) => ({
         events: state.events.filter((evt) => evt._id !== id)
       })),
+      
+      setShiftTemplates: (shiftTemplates) => set({ shiftTemplates }),
+      
+      updateShiftTemplate: (index, template) => set((state) => ({
+        shiftTemplates: state.shiftTemplates.map((t, i) => 
+          i === index ? template : t
+        )
+      })),
+      
+      setWeekNumberConfig: (weekNumberConfig) => set({ weekNumberConfig }),
       
       setLoading: (isLoading) => set({ isLoading }),
       

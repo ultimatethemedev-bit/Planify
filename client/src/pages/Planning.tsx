@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
-import { format, addDays } from 'date-fns'
+import { format, addDays, differenceInWeeks, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { usePlanningStore } from '../stores/planningStore'
 import { useEmployeesStore } from '../stores/employeesStore'
@@ -11,11 +11,19 @@ import { calculateWeeklyHours, getWeekDays, getColorClasses, DAYS_SHORT_FR } fro
 export function Planning() {
   const { currentWeekStart, goToNextWeek, goToPreviousWeek, planning } = usePlanningStore()
   const { employees } = useEmployeesStore()
-  const { events } = useSettingsStore()
+  const { events, weekNumberConfig } = useSettingsStore()
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null)
   
   const weekDays = getWeekDays(currentWeekStart)
   const weekEnd = addDays(currentWeekStart, 6)
+  
+  // Calculer le numéro de semaine basé sur la config
+  const getWeekNumber = () => {
+    const refDate = parseISO(weekNumberConfig.referenceDate)
+    const weeksDiff = differenceInWeeks(currentWeekStart, refDate)
+    return weekNumberConfig.referenceWeekNumber + weeksDiff
+  }
+  const weekNumber = getWeekNumber()
   
   // Check if there's an active event this week
   const activeEvent = events.find(evt => {
@@ -60,6 +68,9 @@ export function Planning() {
               <Icon icon="solar:arrow-left-linear" className="size-5" />
             </button>
             <div className="text-center">
+              <div className="text-xs font-semibold text-primary mb-0.5">
+                Semaine {weekNumber}
+              </div>
               <div className="text-sm font-bold text-foreground">
                 {format(currentWeekStart, 'EEE d MMM', { locale: fr })} - {format(weekEnd, 'EEE d MMM yyyy', { locale: fr })}
               </div>
@@ -96,24 +107,6 @@ export function Planning() {
         </div>
       </header>
       
-      {/* Event banner */}
-      {activeEvent && (
-        <div 
-          className="px-4 py-3 flex items-center gap-2 shadow-sm"
-          style={{ 
-            background: `linear-gradient(to right, ${activeEvent.color}, ${activeEvent.color}dd)` 
-          }}
-        >
-          <span className="text-xl">{activeEvent.emoji}</span>
-          <span className="text-white font-semibold text-sm">
-            {activeEvent.name} - {format(new Date(activeEvent.startDate), 'd MMM', { locale: fr })}
-            {activeEvent.startDate !== activeEvent.endDate && (
-              <> - {format(new Date(activeEvent.endDate), 'd MMM', { locale: fr })}</>
-            )}
-          </span>
-        </div>
-      )}
-      
       {/* Planning grid */}
       {employees.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
@@ -126,8 +119,24 @@ export function Planning() {
           </p>
         </div>
       ) : (
-        <div className="pb-24 flex justify-center">
-          <div className="inline-block">
+        <div className="pb-24 flex justify-center px-4 mt-4">
+          <div className="inline-block border border-border rounded-xl overflow-hidden shadow-sm">
+            {/* Event banner - aligned with planning */}
+            {activeEvent && (
+              <div 
+                className="px-4 py-3 flex items-center gap-2"
+                style={{ background: activeEvent.color }}
+              >
+                <span className="text-xl">{activeEvent.emoji}</span>
+                <span className="text-white font-semibold text-sm">
+                  {activeEvent.name} - {format(new Date(activeEvent.startDate), 'd MMM', { locale: fr })}
+                  {activeEvent.startDate !== activeEvent.endDate && (
+                    <> - {format(new Date(activeEvent.endDate), 'd MMM', { locale: fr })}</>
+                  )}
+                </span>
+              </div>
+            )}
+            
             {/* Days header */}
             <div className="flex bg-card border-b border-border sticky top-0 z-10">
               <div className="w-[200px] px-4 py-3 font-semibold text-sm text-muted-foreground border-r border-border shrink-0">

@@ -5,12 +5,12 @@ import { fr } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { useEmployeesStore } from '../../stores/employeesStore'
 import { usePlanningStore, Shift } from '../../stores/planningStore'
+import { useSettingsStore } from '../../stores/settingsStore'
 import { planningApi } from '../../services/api'
 import { 
   calculateWeeklyHours, 
   getWeekDays, 
   DAYS_FR, 
-  SHIFT_TEMPLATES,
   checkLegalAlerts,
   LegalAlert 
 } from '../../utils/planning'
@@ -29,9 +29,11 @@ interface DayShift {
 export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursModalProps) {
   const { employees } = useEmployeesStore()
   const { planning, setPlanning } = usePlanningStore()
+  const { shiftTemplates } = useSettingsStore()
   const [isLoading, setIsLoading] = useState(false)
   const [shifts, setShifts] = useState<Record<string, DayShift>>({})
   const [alerts, setAlerts] = useState<LegalAlert[]>([])
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
   
   const employee = employees.find(e => e._id === employeeId)
   const weekDays = getWeekDays(weekStart)
@@ -91,21 +93,34 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
     }))
   }
   
-  const applyTemplate = (template: typeof SHIFT_TEMPLATES[0]) => {
-    // Apply to all empty days
-    setShifts(prev => {
-      const updated = { ...prev }
-      Object.keys(updated).forEach(dateStr => {
-        if (!updated[dateStr].startTime && !updated[dateStr].endTime) {
-          updated[dateStr] = {
-            startTime: template.startTime,
-            endTime: template.endTime,
-          }
+  const applyTemplate = (template: { name: string, startTime: string, endTime: string }) => {
+    if (selectedDay) {
+      // Appliquer au jour sélectionné uniquement
+      setShifts(prev => ({
+        ...prev,
+        [selectedDay]: {
+          startTime: template.startTime,
+          endTime: template.endTime,
         }
+      }))
+      toast.success(`${template.name} appliqué à ${DAYS_FR[weekDays.findIndex(d => format(d, 'yyyy-MM-dd') === selectedDay)]}`)
+      setSelectedDay(null)
+    } else {
+      // Appliquer à tous les jours vides
+      setShifts(prev => {
+        const updated = { ...prev }
+        Object.keys(updated).forEach(dateStr => {
+          if (!updated[dateStr].startTime && !updated[dateStr].endTime) {
+            updated[dateStr] = {
+              startTime: template.startTime,
+              endTime: template.endTime,
+            }
+          }
+        })
+        return updated
       })
-      return updated
-    })
-    toast.success(`Template "${template.name}" appliqué`)
+      toast.success(`Template "${template.name}" appliqué aux jours vides`)
+    }
   }
   
   const copyMondayToAll = () => {
@@ -162,9 +177,23 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
     }
   }
   
+  // Bloquer le scroll du body quand la modal est ouverte
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [])
+  
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-[600px] max-h-[90vh] overflow-y-auto animate-slide-up">
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60] animate-fade-in"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-card rounded-2xl shadow-2xl w-full max-w-[600px] max-h-[90vh] overflow-y-auto animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
           <div className="flex items-center gap-4">
@@ -190,22 +219,41 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
         </div>
         
         {/* Templates */}
-        <div className="px-6 py-4 flex gap-3 flex-wrap">
-          {SHIFT_TEMPLATES.map((template) => (
+        <div className="px-6 py-4">
+          {selectedDay && (
+            <p className="text-sm text-primary font-medium mb-3">
+              📍 Sélection : {DAYS_FR[weekDays.findIndex(d => format(d, 'yyyy-MM-dd') === selectedDay)]} — cliquez un template pour l'appliquer
+            </p>
+          )}
+          <div className="flex gap-3 flex-wrap">
+            {shiftTemplates.map((template, index) => (
+              <button
+                key={index}
+                onClick={() => applyTemplate(template)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selectedDay 
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                    : 'bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground'
+                }`}
+              >
+                {template.name} ({template.startTime}-{template.endTime})
+              </button>
+            ))}
             <button
-              key={template.name}
-              onClick={() => applyTemplate(template)}
-              className="px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors"
+              onClick={() => applyTemplate({ name: 'Repos', startTime: '00:00', endTime: '00:00' })}
+              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-muted transition-colors"
             >
-              {template.name} ({template.startTime}-{template.endTime})
+              Repos
             </button>
-          ))}
-          <button
-            onClick={() => applyTemplate({ name: 'Repos', startTime: '00:00', endTime: '00:00' })}
-            className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-muted transition-colors"
-          >
-            Repos
-          </button>
+            {selectedDay && (
+              <button
+                onClick={() => setSelectedDay(null)}
+                className="px-4 py-2 bg-destructive/10 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/20 transition-colors"
+              >
+                Annuler sélection
+              </button>
+            )}
+          </div>
         </div>
         
         {/* Days */}
@@ -215,17 +263,31 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
             const dayShift = shifts[dateStr] || { startTime: '', endTime: '' }
             const isSunday = index === 6
             const isRestDay = dayShift.startTime === '00:00' && dayShift.endTime === '00:00'
+            const isSelected = selectedDay === dateStr
             
             return (
               <div 
                 key={dateStr}
-                className={`bg-card border rounded-2xl p-4 hover:bg-accent/30 transition-colors ${
-                  isSunday ? 'border-orange-200 bg-orange-50/30' : isRestDay ? 'border-gray-300 bg-gray-50' : 'border-border'
+                className={`bg-card border rounded-2xl p-4 transition-colors cursor-pointer ${
+                  isSelected 
+                    ? 'border-primary ring-2 ring-primary/20 bg-primary/5' 
+                    : isSunday 
+                      ? 'border-orange-200 bg-orange-50/30 hover:bg-orange-50/50' 
+                      : isRestDay 
+                        ? 'border-gray-300 bg-gray-50 hover:bg-gray-100' 
+                        : 'border-border hover:bg-accent/30'
                 }`}
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-24 font-semibold text-foreground">
-                    {DAYS_FR[index]}
+                  <div 
+                    className="w-24 font-semibold text-foreground cursor-pointer"
+                    onClick={() => setSelectedDay(isSelected ? null : dateStr)}
+                    title="Cliquer pour sélectionner ce jour"
+                  >
+                    <div className="flex items-center gap-2">
+                      {isSelected && <Icon icon="solar:check-circle-bold" className="size-4 text-primary" />}
+                      {DAYS_FR[index]}
+                    </div>
                     {isSunday && !isRestDay && (
                       <span className="block text-[10px] text-orange-600 font-normal">+100%</span>
                     )}

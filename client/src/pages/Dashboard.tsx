@@ -14,14 +14,17 @@ export function Dashboard() {
   const { events } = useSettingsStore()
   
   const today = new Date()
+  const todayStr = format(today, 'yyyy-MM-dd')
   const weekStart = startOfWeek(today, { weekStartsOn: 1 })
   const weekEnd = addDays(weekStart, 6)
   
-  // Get upcoming events (within next 30 days)
+  // Séparer événements en cours et à venir
+  const currentEvents = events.filter(evt => {
+    return evt.startDate <= todayStr && evt.endDate >= todayStr
+  })
+  
   const upcomingEvents = events.filter(evt => {
-    const startDate = new Date(evt.startDate)
-    const diffDays = Math.ceil((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    return diffDays >= 0 && diffDays <= 30
+    return evt.startDate > todayStr
   })
   
   return (
@@ -73,8 +76,14 @@ export function Dashboard() {
             <Icon icon="solar:calendar-add-bold" className="size-6" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-foreground">{upcomingEvents.length}</div>
-            <div className="text-sm text-muted-foreground font-medium">Événements à venir</div>
+            <div className="text-2xl font-bold text-foreground">
+              {currentEvents.length > 0 ? currentEvents.length : upcomingEvents.length}
+            </div>
+            <div className="text-sm text-muted-foreground font-medium">
+              {currentEvents.length > 0 
+                ? `Événement${currentEvents.length > 1 ? 's' : ''} en cours` 
+                : `Événement${upcomingEvents.length > 1 ? 's' : ''} à venir`}
+            </div>
           </div>
         </div>
       </section>
