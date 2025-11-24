@@ -126,14 +126,14 @@ export function Planning() {
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto pb-24">
-          <div className="min-w-max">
+        <div className="pb-24 flex justify-center">
+          <div className="inline-block">
             {/* Days header */}
-            <div className="flex bg-card border-b border-border sticky top-[65px] z-10">
+            <div className="flex bg-card border-b border-border sticky top-0 z-10">
               <div className="w-[200px] px-4 py-3 font-semibold text-sm text-muted-foreground border-r border-border shrink-0">
                 Employés
               </div>
-              <div className="flex flex-1">
+              <div className="flex">
                 {weekDays.map((date, index) => {
                   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
                   return (
@@ -194,10 +194,11 @@ export function Planning() {
                   </div>
                   
                   {/* Shifts grid */}
-                  <div className="flex flex-1">
+                  <div className="flex">
                     {weekDays.map((date, dayIndex) => {
                       const shift = getShiftForDay(employee._id, date)
                       const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+                      const isRestDay = shift && shift.startTime === '00:00' && shift.endTime === '00:00'
                       
                       return (
                         <div 
@@ -207,13 +208,21 @@ export function Planning() {
                           }`}
                         >
                           {shift ? (
-                            <div 
-                              className={`${colorClasses.bg} rounded-lg p-2 h-full flex items-center justify-center`}
-                            >
-                              <div className={`text-xs font-bold ${colorClasses.text}`}>
-                                {shift.startTime}-{shift.endTime}
+                            isRestDay ? (
+                              <div className="bg-secondary rounded-lg p-2 h-full flex items-center justify-center">
+                                <div className="text-xs font-bold text-muted-foreground">
+                                  Repos
+                                </div>
                               </div>
-                            </div>
+                            ) : (
+                              <div 
+                                className={`${colorClasses.bg} rounded-lg p-2 h-full flex items-center justify-center`}
+                              >
+                                <div className={`text-xs font-bold ${colorClasses.text}`}>
+                                  {shift.startTime}-{shift.endTime}
+                                </div>
+                              </div>
+                            )
                           ) : (
                             <div className="border-2 border-dashed border-border rounded-lg h-full min-h-[40px] flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                               <Icon icon="solar:add-circle-bold" className="size-6 text-muted-foreground" />

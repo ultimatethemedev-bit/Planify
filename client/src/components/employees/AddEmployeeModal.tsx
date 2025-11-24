@@ -21,11 +21,43 @@ interface EmployeeForm {
 }
 
 export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
-  const { addEmployee, updateEmployee } = useEmployeesStore()
+  const { employees, addEmployee, updateEmployee } = useEmployeesStore()
   const [isLoading, setIsLoading] = useState(false)
   const [selectedColor, setSelectedColor] = useState(employee?.color || EMPLOYEE_COLORS[0].value)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(employee?.avatar || null)
   
   const isEditing = !!employee
+  
+  // Couleurs déjà utilisées par d'autres employés (sauf l'employé en cours d'édition)
+  const usedColors = employees
+    .filter(emp => emp._id !== employee?._id)
+    .map(emp => emp.color)
+  
+  // Sélectionner la première couleur disponible par défaut
+  useEffect(() => {
+    if (!employee) {
+      const firstAvailable = EMPLOYEE_COLORS.find(c => !usedColors.includes(c.value))
+      if (firstAvailable) {
+        setSelectedColor(firstAvailable.value)
+      }
+    }
+  }, [employee, usedColors])
+  
+  // Gestion de l'upload de photo
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('Image trop lourde (max 2MB)')
+        return
+      }
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
   
   // Bloquer le scroll du body quand la modal est ouverte
   useEffect(() => {
@@ -67,6 +99,7 @@ export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
       const employeeData = {
         ...data,
         color: selectedColor,
+        avatar: avatarPreview,
       }
       
       if (isEditing && employee) {
@@ -110,14 +143,29 @@ export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
         
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="px-6 py-6 space-y-5">
-          {/* Avatar placeholder */}
+          {/* Avatar upload */}
           <div className="flex justify-center">
-            <div 
-              className="size-24 rounded-full flex items-center justify-center text-white text-2xl font-bold"
-              style={{ backgroundColor: selectedColor }}
-            >
-              <Icon icon="solar:camera-bold" className="size-8" />
-            </div>
+            <label className="cursor-pointer group relative">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
+              <div 
+                className="size-24 rounded-full flex items-center justify-center text-white text-2xl font-bold overflow-hidden transition-transform group-hover:scale-105"
+                style={{ backgroundColor: selectedColor }}
+              >
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <Icon icon="solar:camera-bold" className="size-8" />
+                )}
+              </div>
+              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Icon icon="solar:camera-bold" className="size-8 text-white" />
+              </div>
+            </label>
           </div>
           
           {/* First name */}
@@ -225,23 +273,32 @@ export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
           <div>
             <label className="block text-sm font-medium text-foreground mb-3">Couleur planning</label>
             <div className="flex gap-3 flex-wrap">
-              {EMPLOYEE_COLORS.map((color) => (
-                <button
-                  key={color.value}
-                  type="button"
-                  onClick={() => setSelectedColor(color.value)}
-                  className={`size-10 rounded-full border-2 transition-all ${
-                    selectedColor === color.value 
-                      ? 'border-primary scale-110' 
-                      : 'border-transparent hover:border-border'
-                  }`}
-                  style={{ backgroundColor: color.value }}
-                >
-                  {selectedColor === color.value && (
-                    <Icon icon="solar:check-circle-bold" className="size-5 text-white mx-auto" />
-                  )}
-                </button>
-              ))}
+              {EMPLOYEE_COLORS.map((color) => {
+                const isUsed = usedColors.includes(color.value)
+                return (
+                  <button
+                    key={color.value}
+                    type="button"
+                    onClick={() => !isUsed && setSelectedColor(color.value)}
+                    disabled={isUsed}
+                    className={`size-10 rounded-full border-2 transition-all ${
+                      selectedColor === color.value 
+                        ? 'border-primary scale-110' 
+                        : isUsed
+                          ? 'border-transparent opacity-30 cursor-not-allowed'
+                          : 'border-transparent hover:border-border'
+                    }`}
+                    style={{ backgroundColor: color.value }}
+                  >
+                    {selectedColor === color.value && (
+                      <Icon icon="solar:check-circle-bold" className="size-5 text-white mx-auto" />
+                    )}
+                    {isUsed && selectedColor !== color.value && (
+                      <Icon icon="solar:close-circle-bold" className="size-5 text-white/70 mx-auto" />
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </form>

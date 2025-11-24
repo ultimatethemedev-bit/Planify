@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -11,12 +11,12 @@ import { DAYS_FR } from '../utils/planning'
 const DAY_KEYS: (keyof StoreHours)[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
 const EVENT_COLORS = [
-  { name: 'Bleu', value: '#3B82F6' },
-  { name: 'Rose', value: '#EC4899' },
-  { name: 'Vert', value: '#10B981' },
-  { name: 'Orange', value: '#F97316' },
-  { name: 'Violet', value: '#8B5CF6' },
-  { name: 'Teal', value: '#14B8A6' },
+  { name: 'Bleu-Violet', value: 'linear-gradient(135deg, #3B82F6, #8B5CF6)' },
+  { name: 'Rose-Orange', value: 'linear-gradient(135deg, #EC4899, #F97316)' },
+  { name: 'Vert-Teal', value: 'linear-gradient(135deg, #10B981, #14B8A6)' },
+  { name: 'Orange-Jaune', value: 'linear-gradient(135deg, #F97316, #EAB308)' },
+  { name: 'Violet-Rose', value: 'linear-gradient(135deg, #8B5CF6, #EC4899)' },
+  { name: 'Teal-Bleu', value: 'linear-gradient(135deg, #14B8A6, #3B82F6)' },
 ]
 
 const EVENT_EMOJIS = ['🔥', '🏷️', '🎁', '🎄', '💝', '🌸', '☀️', '🎃']
@@ -32,6 +32,7 @@ export function Settings() {
   } = useSettingsStore()
   
   const [isLoading, setIsLoading] = useState(false)
+  const [hasHoursChanged, setHasHoursChanged] = useState(false)
   const [showEventForm, setShowEventForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CommercialEvent | null>(null)
   
@@ -42,14 +43,25 @@ export function Settings() {
   const [eventEndDate, setEventEndDate] = useState('')
   const [eventColor, setEventColor] = useState(EVENT_COLORS[0].value)
   
+  // Initialiser les dates quand on ouvre le formulaire
+  useEffect(() => {
+    if (showEventForm && !editingEvent) {
+      const today = format(new Date(), 'yyyy-MM-dd')
+      setEventStartDate(today)
+      setEventEndDate(today)
+    }
+  }, [showEventForm, editingEvent])
+  
   const handleDayToggle = (dayKey: keyof StoreHours) => {
     const current = storeHours[dayKey]
     updateDayHours(dayKey, { ...current, isOpen: !current.isOpen })
+    setHasHoursChanged(true)
   }
   
   const handleTimeChange = (dayKey: keyof StoreHours, field: 'openTime' | 'closeTime', value: string) => {
     const current = storeHours[dayKey]
     updateDayHours(dayKey, { ...current, [field]: value })
+    setHasHoursChanged(true)
   }
   
   const handleSaveHours = async () => {
@@ -57,6 +69,7 @@ export function Settings() {
     try {
       await settingsApi.updateStoreHours(storeHours)
       toast.success('Horaires enregistrés')
+      setHasHoursChanged(false)
     } catch (error) {
       toast.error('Erreur lors de l\'enregistrement')
     } finally {
@@ -169,7 +182,7 @@ export function Settings() {
                       value={dayHours.openTime}
                       onChange={(e) => handleTimeChange(dayKey, 'openTime', e.target.value)}
                       disabled={!dayHours.isOpen}
-                      className={`w-20 px-2 py-1.5 text-sm rounded-lg border border-border bg-input ${
+                      className={`w-28 px-3 py-2 text-sm rounded-lg border border-border bg-input ${
                         !dayHours.isOpen ? 'opacity-50' : ''
                       }`}
                     />
@@ -179,7 +192,7 @@ export function Settings() {
                       value={dayHours.closeTime}
                       onChange={(e) => handleTimeChange(dayKey, 'closeTime', e.target.value)}
                       disabled={!dayHours.isOpen}
-                      className={`w-20 px-2 py-1.5 text-sm rounded-lg border border-border bg-input ${
+                      className={`w-28 px-3 py-2 text-sm rounded-lg border border-border bg-input ${
                         !dayHours.isOpen ? 'opacity-50' : ''
                       }`}
                     />
@@ -191,10 +204,14 @@ export function Settings() {
           
           <button 
             onClick={handleSaveHours}
-            disabled={isLoading}
-            className="w-full mt-6 py-3 px-4 bg-primary text-primary-foreground rounded-xl font-semibold shadow-sm active:scale-95 transition-transform disabled:opacity-50"
+            disabled={isLoading || !hasHoursChanged}
+            className={`w-full mt-6 py-3 px-4 rounded-xl font-semibold shadow-sm transition-all ${
+              hasHoursChanged 
+                ? 'bg-primary text-primary-foreground active:scale-95' 
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
+            }`}
           >
-            {isLoading ? 'Enregistrement...' : 'Enregistrer'}
+            {isLoading ? 'Enregistrement...' : hasHoursChanged ? 'Enregistrer' : 'Enregistré ✓'}
           </button>
         </div>
       </section>
@@ -253,93 +270,114 @@ export function Settings() {
           </div>
         </div>
         
-        {/* Event form */}
+        {/* Event form MODAL */}
         {showEventForm && (
-          <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50 animate-slide-up">
-            <div className="space-y-4">
-              {/* Event name */}
-              <div>
-                <label className="block text-sm font-medium mb-2 text-foreground">
-                  Nom de l'événement
-                </label>
-                <input
-                  type="text"
-                  value={eventName}
-                  onChange={(e) => setEventName(e.target.value)}
-                  placeholder="Ex: Soldes de printemps"
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-input"
-                />
+          <div 
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60] animate-fade-in"
+            onClick={resetEventForm}
+          >
+            <div 
+              className="bg-card rounded-2xl shadow-2xl w-full max-w-[500px] max-h-[90vh] overflow-y-auto animate-slide-up"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
+                <h2 className="text-xl font-semibold text-foreground font-heading">
+                  {editingEvent ? 'Modifier événement' : 'Nouvel événement'}
+                </h2>
+                <button 
+                  onClick={resetEventForm}
+                  className="size-10 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors"
+                >
+                  <Icon icon="solar:close-circle-bold" className="size-6 text-muted-foreground" />
+                </button>
               </div>
               
-              {/* Emoji selector */}
-              <div>
-                <label className="block text-sm font-medium mb-2 text-foreground">Emoji</label>
-                <div className="flex gap-2 flex-wrap">
-                  {EVENT_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => setEventEmoji(emoji)}
-                      className={`size-10 rounded-lg flex items-center justify-center text-xl transition-all ${
-                        eventEmoji === emoji 
-                          ? 'bg-primary/10 ring-2 ring-primary' 
-                          : 'bg-secondary hover:bg-muted'
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Dates */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="p-6 space-y-5">
+                {/* Event name */}
                 <div>
                   <label className="block text-sm font-medium mb-2 text-foreground">
-                    Date de début
+                    Nom de l'événement
                   </label>
                   <input
-                    type="date"
-                    value={eventStartDate}
-                    onChange={(e) => setEventStartDate(e.target.value)}
+                    type="text"
+                    value={eventName}
+                    onChange={(e) => setEventName(e.target.value)}
+                    placeholder="Ex: Soldes de printemps"
                     className="w-full px-4 py-3 rounded-xl border border-border bg-input"
                   />
                 </div>
+                
+                {/* Emoji selector */}
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-foreground">
-                    Date de fin
-                  </label>
-                  <input
-                    type="date"
-                    value={eventEndDate}
-                    onChange={(e) => setEventEndDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-input"
-                  />
+                  <label className="block text-sm font-medium mb-2 text-foreground">Emoji</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {EVENT_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setEventEmoji(emoji)}
+                        className={`size-10 rounded-lg flex items-center justify-center text-xl transition-all ${
+                          eventEmoji === emoji 
+                            ? 'bg-primary/10 ring-2 ring-primary' 
+                            : 'bg-secondary hover:bg-muted'
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              
-              {/* Color */}
-              <div>
-                <label className="block text-sm font-medium mb-3 text-foreground">Couleur</label>
-                <div className="flex gap-3">
-                  {EVENT_COLORS.map((color) => (
-                    <button
-                      key={color.value}
-                      type="button"
-                      onClick={() => setEventColor(color.value)}
-                      className={`size-10 rounded-full border-2 shadow-sm transition-transform active:scale-90 ${
-                        eventColor === color.value 
-                          ? 'ring-2 ring-primary ring-offset-2' 
-                          : 'border-background'
-                      }`}
-                      style={{ backgroundColor: color.value }}
+                
+                {/* Dates */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-foreground">
+                      Date de début
+                    </label>
+                    <input
+                      type="date"
+                      value={eventStartDate}
+                      onChange={(e) => setEventStartDate(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-input"
                     />
-                  ))}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-foreground">
+                      Date de fin
+                    </label>
+                    <input
+                      type="date"
+                      value={eventEndDate}
+                      onChange={(e) => setEventEndDate(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-input"
+                    />
+                  </div>
+                </div>
+                
+                {/* Color */}
+                <div>
+                  <label className="block text-sm font-medium mb-3 text-foreground">Couleur</label>
+                  <div className="flex gap-3">
+                    {EVENT_COLORS.map((color) => (
+                      <button
+                        key={color.value}
+                        type="button"
+                        onClick={() => setEventColor(color.value)}
+                        className={`size-10 rounded-full border-2 shadow-sm transition-transform active:scale-90 ${
+                          eventColor === color.value 
+                            ? 'ring-2 ring-primary ring-offset-2' 
+                            : 'border-background'
+                        }`}
+                        style={{ background: color.value }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
               
-              {/* Actions */}
-              <div className="flex gap-3 pt-2">
+              {/* Footer */}
+              <div className="sticky bottom-0 bg-card border-t border-border px-6 py-4 flex gap-3 rounded-b-2xl">
                 <button 
                   onClick={resetEventForm}
                   className="flex-1 py-3 px-4 bg-secondary text-secondary-foreground rounded-xl font-semibold active:scale-95 transition-transform"

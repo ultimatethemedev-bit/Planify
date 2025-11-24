@@ -28,6 +28,11 @@ export const minutesToHours = (minutes: number): number => {
 
 // Calculate shift duration in minutes
 export const getShiftDuration = (startTime: string, endTime: string): number => {
+  // Si c'est un jour de repos (00:00-00:00), durée = 0
+  if (startTime === '00:00' && endTime === '00:00') {
+    return 0
+  }
+  
   const start = timeToMinutes(startTime)
   let end = timeToMinutes(endTime)
   
@@ -37,6 +42,11 @@ export const getShiftDuration = (startTime: string, endTime: string): number => 
   }
   
   return end - start
+}
+
+// Check if shift is a rest day
+export const isRestDay = (startTime: string, endTime: string): boolean => {
+  return startTime === '00:00' && endTime === '00:00'
 }
 
 // Calculate total hours for an employee for a week
@@ -94,19 +104,6 @@ export const checkLegalAlerts = (
         day: format(parseISO(date), 'EEEE', { locale: fr }),
       })
     }
-    
-    // Check for 6h+ without break (simplified: if shift > 6h)
-    dayShifts.forEach(shift => {
-      const duration = getShiftDuration(shift.startTime, shift.endTime)
-      if (duration > 6 * 60) {
-        alerts.push({
-          type: 'warning',
-          code: 'BREAK_REQUIRED',
-          message: `Plus de 6h travaillées - pause de 20min obligatoire`,
-          day: format(parseISO(date), 'EEEE', { locale: fr }),
-        })
-      }
-    })
   })
   
   // 2. Check weekly hours (max 48h/week)

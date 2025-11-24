@@ -200,6 +200,12 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
               {template.name} ({template.startTime}-{template.endTime})
             </button>
           ))}
+          <button
+            onClick={() => applyTemplate({ name: 'Repos', startTime: '00:00', endTime: '00:00' })}
+            className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-muted transition-colors"
+          >
+            Repos
+          </button>
         </div>
         
         {/* Days */}
@@ -208,19 +214,23 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
             const dateStr = format(date, 'yyyy-MM-dd')
             const dayShift = shifts[dateStr] || { startTime: '', endTime: '' }
             const isSunday = index === 6
+            const isRestDay = dayShift.startTime === '00:00' && dayShift.endTime === '00:00'
             
             return (
               <div 
                 key={dateStr}
                 className={`bg-card border rounded-2xl p-4 hover:bg-accent/30 transition-colors ${
-                  isSunday ? 'border-orange-200 bg-orange-50/30' : 'border-border'
+                  isSunday ? 'border-orange-200 bg-orange-50/30' : isRestDay ? 'border-gray-300 bg-gray-50' : 'border-border'
                 }`}
               >
                 <div className="flex items-center gap-4">
                   <div className="w-24 font-semibold text-foreground">
                     {DAYS_FR[index]}
-                    {isSunday && (
+                    {isSunday && !isRestDay && (
                       <span className="block text-[10px] text-orange-600 font-normal">+100%</span>
+                    )}
+                    {isRestDay && (
+                      <span className="block text-[10px] text-muted-foreground font-normal">Repos</span>
                     )}
                   </div>
                   <div className="flex items-center gap-3 flex-1">
@@ -230,7 +240,7 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                         type="time"
                         value={dayShift.startTime}
                         onChange={(e) => handleTimeChange(dateStr, 'startTime', e.target.value)}
-                        className="bg-input border border-border rounded-lg px-3 py-2 text-sm w-full"
+                        className={`bg-input border border-border rounded-lg px-3 py-2 text-sm w-full ${isRestDay ? 'opacity-50' : ''}`}
                       />
                     </div>
                     <span className="text-muted-foreground">-</span>
@@ -240,9 +250,28 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                         type="time"
                         value={dayShift.endTime}
                         onChange={(e) => handleTimeChange(dateStr, 'endTime', e.target.value)}
-                        className="bg-input border border-border rounded-lg px-3 py-2 text-sm w-full"
+                        className={`bg-input border border-border rounded-lg px-3 py-2 text-sm w-full ${isRestDay ? 'opacity-50' : ''}`}
                       />
                     </div>
+                    <button
+                      onClick={() => {
+                        if (isRestDay) {
+                          handleTimeChange(dateStr, 'startTime', '')
+                          handleTimeChange(dateStr, 'endTime', '')
+                        } else {
+                          handleTimeChange(dateStr, 'startTime', '00:00')
+                          handleTimeChange(dateStr, 'endTime', '00:00')
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                        isRestDay 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-secondary text-secondary-foreground hover:bg-muted'
+                      }`}
+                      title={isRestDay ? 'Annuler repos' : 'Marquer repos'}
+                    >
+                      {isRestDay ? '✓ Repos' : 'Repos'}
+                    </button>
                   </div>
                 </div>
               </div>
