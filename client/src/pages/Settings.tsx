@@ -108,6 +108,19 @@ export function Settings() {
       return
     }
     
+    // Validation des dates
+    const startYear = parseInt(eventStartDate.split('-')[0])
+    const endYear = parseInt(eventEndDate.split('-')[0])
+    if (startYear < 2020 || startYear > 2030 || endYear < 2020 || endYear > 2030) {
+      toast.error('Dates invalides (année entre 2020 et 2030)')
+      return
+    }
+    
+    if (eventEndDate < eventStartDate) {
+      toast.error('La date de fin doit être après la date de début')
+      return
+    }
+    
     setIsLoading(true)
     try {
       const eventData = {
@@ -440,6 +453,8 @@ export function Settings() {
                     <input
                       type="date"
                       value={eventStartDate}
+                      min="2020-01-01"
+                      max="2030-12-31"
                       onChange={(e) => setEventStartDate(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl border border-border bg-input"
                     />
@@ -451,6 +466,8 @@ export function Settings() {
                     <input
                       type="date"
                       value={eventEndDate}
+                      min={eventStartDate || "2020-01-01"}
+                      max="2030-12-31"
                       onChange={(e) => setEventEndDate(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl border border-border bg-input"
                     />

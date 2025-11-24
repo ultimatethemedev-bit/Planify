@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
-import { format, startOfWeek, addDays } from 'date-fns'
+import { format, startOfWeek, addDays, differenceInWeeks, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Header } from '../components/layout/Header'
 import { useAuthStore } from '../stores/authStore'
@@ -11,12 +12,22 @@ export function Dashboard() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const { employees } = useEmployeesStore()
-  const { events } = useSettingsStore()
+  const { events, weekNumberConfig } = useSettingsStore()
+  const [showCurrentEvents, setShowCurrentEvents] = useState(false)
+  const [showUpcomingEvents, setShowUpcomingEvents] = useState(false)
   
   const today = new Date()
   const todayStr = format(today, 'yyyy-MM-dd')
   const weekStart = startOfWeek(today, { weekStartsOn: 1 })
   const weekEnd = addDays(weekStart, 6)
+  
+  // Calculer le numéro de semaine
+  const getWeekNumber = () => {
+    const refDate = parseISO(weekNumberConfig.referenceDate)
+    const weeksDiff = differenceInWeeks(weekStart, refDate)
+    return weekNumberConfig.referenceWeekNumber + weeksDiff
+  }
+  const weekNumber = getWeekNumber()
   
   // Séparer événements en cours et à venir
   const currentEvents = events.filter(evt => {
@@ -53,15 +64,18 @@ export function Dashboard() {
           </div>
         </div>
         
-        <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50 flex items-center gap-4">
+        <div 
+          className="bg-card rounded-xl p-5 shadow-sm border border-border/50 flex items-center gap-4 cursor-pointer hover:bg-accent/30 transition-colors"
+          onClick={() => navigate('/planning')}
+        >
           <div className="size-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
             <Icon icon="solar:chart-2-bold" className="size-6" />
           </div>
           <div className="flex-1">
             <div className="flex items-baseline justify-between mb-1">
-              <div className="text-2xl font-bold text-foreground">--</div>
+              <div className="text-2xl font-bold text-foreground">Semaine {weekNumber}</div>
               <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                À planifier
+                {format(weekStart, 'd MMM', { locale: fr })} - {format(weekEnd, 'd MMM', { locale: fr })}
               </span>
             </div>
             <div className="text-sm text-muted-foreground font-medium mb-2">Semaine en cours</div>
@@ -71,21 +85,83 @@ export function Dashboard() {
           </div>
         </div>
         
-        <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50 flex items-center gap-4">
-          <div className="size-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 shrink-0">
-            <Icon icon="solar:calendar-add-bold" className="size-6" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-foreground">
-              {currentEvents.length > 0 ? currentEvents.length : upcomingEvents.length}
+        {/* Événements en cours */}
+        {currentEvents.length > 0 && (
+          <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
+            <div 
+              className="p-5 flex items-center gap-4 cursor-pointer hover:bg-accent/30 transition-colors"
+              onClick={() => setShowCurrentEvents(!showCurrentEvents)}
+            >
+              <div className="size-12 rounded-full bg-green-50 flex items-center justify-center text-green-500 shrink-0">
+                <Icon icon="solar:calendar-mark-bold" className="size-6" />
+              </div>
+              <div className="flex-1">
+                <div className="text-2xl font-bold text-foreground">{currentEvents.length}</div>
+                <div className="text-sm text-muted-foreground font-medium">
+                  Événement{currentEvents.length > 1 ? 's' : ''} en cours
+                </div>
+              </div>
+              <Icon 
+                icon={showCurrentEvents ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} 
+                className="size-5 text-muted-foreground" 
+              />
             </div>
-            <div className="text-sm text-muted-foreground font-medium">
-              {currentEvents.length > 0 
-                ? `Événement${currentEvents.length > 1 ? 's' : ''} en cours` 
-                : `Événement${upcomingEvents.length > 1 ? 's' : ''} à venir`}
-            </div>
+            {showCurrentEvents && (
+              <div className="px-5 pb-4 space-y-2 border-t border-border">
+                {currentEvents.map(evt => (
+                  <div key={evt._id} className="flex items-center gap-3 pt-3">
+                    <span className="text-xl">{evt.emoji}</span>
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold">{evt.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(evt.startDate), 'd MMM', { locale: fr })} - {format(new Date(evt.endDate), 'd MMM', { locale: fr })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
+        )}
+        
+        {/* Événements à venir */}
+        {upcomingEvents.length > 0 && (
+          <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
+            <div 
+              className="p-5 flex items-center gap-4 cursor-pointer hover:bg-accent/30 transition-colors"
+              onClick={() => setShowUpcomingEvents(!showUpcomingEvents)}
+            >
+              <div className="size-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 shrink-0">
+                <Icon icon="solar:calendar-add-bold" className="size-6" />
+              </div>
+              <div className="flex-1">
+                <div className="text-2xl font-bold text-foreground">{upcomingEvents.length}</div>
+                <div className="text-sm text-muted-foreground font-medium">
+                  Événement{upcomingEvents.length > 1 ? 's' : ''} à venir
+                </div>
+              </div>
+              <Icon 
+                icon={showUpcomingEvents ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} 
+                className="size-5 text-muted-foreground" 
+              />
+            </div>
+            {showUpcomingEvents && (
+              <div className="px-5 pb-4 space-y-2 border-t border-border">
+                {upcomingEvents.map(evt => (
+                  <div key={evt._id} className="flex items-center gap-3 pt-3">
+                    <span className="text-xl">{evt.emoji}</span>
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold">{evt.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(evt.startDate), 'd MMM', { locale: fr })} - {format(new Date(evt.endDate), 'd MMM', { locale: fr })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </section>
       
       {/* Quick Actions */}
