@@ -1,5 +1,9 @@
+import { useEffect } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { Icon } from '@iconify/react'
+import { useEmployeesStore } from '../../stores/employeesStore'
+import { useSettingsStore } from '../../stores/settingsStore'
+import { employeesApi, settingsApi } from '../../services/api'
 
 const navItems = [
   { path: '/', icon: 'solar:home-2-bold', label: 'Accueil' },
@@ -10,6 +14,39 @@ const navItems = [
 
 export function Layout() {
   const location = useLocation()
+  const { setEmployees, setLoading: setEmployeesLoading } = useEmployeesStore()
+  const { setStoreHours, setShiftTemplates, setEvents, setWeekNumberConfig } = useSettingsStore()
+  
+  // Charger les données au démarrage
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Charger employés
+        setEmployeesLoading(true)
+        const employees = await employeesApi.getAll()
+        setEmployees(employees)
+        
+        // Charger settings
+        const [storeHours, templates, events, weekConfig] = await Promise.all([
+          settingsApi.getStoreHours(),
+          settingsApi.getShiftTemplates(),
+          settingsApi.getEvents(),
+          settingsApi.getWeekNumberConfig(),
+        ])
+        
+        if (storeHours) setStoreHours(storeHours)
+        if (templates) setShiftTemplates(templates)
+        if (events) setEvents(events)
+        if (weekConfig) setWeekNumberConfig(weekConfig)
+      } catch (error) {
+        console.error('Erreur chargement données:', error)
+      } finally {
+        setEmployeesLoading(false)
+      }
+    }
+    
+    fetchData()
+  }, [])
   
   return (
     <div className="min-h-screen bg-background font-sans">

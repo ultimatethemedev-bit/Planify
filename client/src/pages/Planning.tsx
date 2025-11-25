@@ -1,21 +1,45 @@
 import { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
-import { format, addDays, differenceInWeeks, parseISO } from 'date-fns'
+import { format, addDays, addWeeks, differenceInWeeks, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { usePlanningStore } from '../stores/planningStore'
 import { useEmployeesStore } from '../stores/employeesStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { ShiftHoursModal } from '../components/planning/ShiftHoursModal'
 import { calculateWeeklyHours, getWeekDays, getColorClasses, DAYS_SHORT_FR } from '../utils/planning'
+import toast from 'react-hot-toast'
 
 export function Planning() {
-  const { currentWeekStart, goToNextWeek, goToPreviousWeek, planning } = usePlanningStore()
+  const { currentWeekStart, goToNextWeek, goToPreviousWeek, planning, setPlanning } = usePlanningStore()
   const { employees } = useEmployeesStore()
   const { events, weekNumberConfig } = useSettingsStore()
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null)
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false)
+  const [isDuplicating, setIsDuplicating] = useState(false)
+  const [isLoadingPlanning, setIsLoadingPlanning] = useState(false)
   
   const weekDays = getWeekDays(currentWeekStart)
   const weekEnd = addDays(currentWeekStart, 6)
+  
+  // Charger le planning de la semaine actuelle
+  useEffect(() => {
+    const fetchPlanning = async () => {
+      try {
+        setIsLoadingPlanning(true)
+        const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd')
+        const { planningApi } = await import('../services/api')
+        const data = await planningApi.getByWeek(weekStartStr)
+        setPlanning(data)
+      } catch (error) {
+        console.error('Erreur chargement planning:', error)
+        setPlanning(null)
+      } finally {
+        setIsLoadingPlanning(false)
+      }
+    }
+    
+    fetchPlanning()
+  }, [currentWeekStart, setPlanning])
   
   // Calculer le numéro de semaine basé sur la config
   const getWeekNumber = () => {
@@ -43,6 +67,86 @@ export function Planning() {
   
   const handleEmployeeClick = (employeeId: string) => {
     setSelectedEmployeeId(employeeId)
+  }
+  
+  const handleDuplicateWeek = async () => {
+    if (!planning?.shifts || planning.shifts.length === 0) {
+      toast.error('Aucun planning à dupliquer')
+      return
+    }
+    
+    setIsDuplicating(true)
+    try {
+      const nextWeekStart = addWeeks(currentWeekStart, 1)
+      const nextWeekStartStr = format(nextWeekStart, 'yyyy-MM-dd')
+      
+      // Créer les nouveaux shifts pour la semaine suivante
+      const duplicatedShifts = planning.shifts.map(shift => {
+        const shiftDate = new Date(shift.date)
+        const daysDiff = differenceInWeeks(shiftDate, currentWeekStart) * 7 + shiftDate.getDay() - currentWeekStart.getDay()
+        const newDate = addDays(nextWeekStart, daysDiff)
+        
+        return {
+          employeeId: shift.employeeId,
+          date: format(newDate, 'yyyy-MM-dd'),
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+        }
+      })
+      
+      // Charger le planning de la semaine suivante
+      const { planningApi } = await import('../services/api')
+      const existingNextWeekPlanning = await planningApi.getByWeek(nextWeekStartStr)
+      
+      // Fusionner avec les shifts existants (si il y en a)
+      const otherShifts = existingNextWeekPlanning?.shifts || []
+      const response = await planningApi.createOrUpdate({
+        weekStart: nextWeekStartStr,
+        shifts: [...otherShifts, ...duplicatedShifts],
+      })
+      
+      toast.success('Planning dupliqué sur la semaine suivante')
+      setShowDuplicateModal(false)
+      
+      // Naviguer vers la semaine suivante
+      goToNextWeek()
+    } catch (error) {
+      toast.error('Erreur lors de la duplication')
+    } finally {
+      setIsDuplicating(false)
+    }
+  }
+  
+  const handleExportImage = async () => {
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const planningElement = document.querySelector('.planning-grid') as HTMLElement
+      
+      if (!planningElement) {
+        toast.error('Impossible de capturer le planning')
+        return
+      }
+      
+      toast.info('Génération de l\'image...')
+      
+      const canvas = await html2canvas(planningElement, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+      })
+      
+      const link = document.createElement('a')
+      link.download = `planning-semaine-${weekNumber}.png`
+      link.href = canvas.toDataURL()
+      link.click()
+      
+      toast.success('Planning exporté !')
+    } catch (error) {
+      toast.error('Erreur lors de l\'export')
+    }
+  }
+  
+  const handlePrint = () => {
+    window.print()
   }
   
   return (
@@ -87,22 +191,25 @@ export function Planning() {
           {/* Actions */}
           <div className="flex items-center gap-2 justify-end">
             <button 
+              onClick={() => setShowDuplicateModal(true)}
               className="size-9 flex items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:bg-muted hover:text-foreground transition-colors hidden sm:flex"
               title="Dupliquer la semaine"
             >
               <Icon icon="solar:copy-bold" className="size-5" />
             </button>
             <button 
+              onClick={handleExportImage}
               className="size-9 flex items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              title="Exporter PDF"
+              title="Exporter en image"
             >
-              <Icon icon="solar:document-bold" className="size-5" />
+              <Icon icon="solar:gallery-download-bold" className="size-5" />
             </button>
             <button 
-              className="size-9 flex items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:bg-muted hover:text-foreground transition-colors hidden sm:flex"
-              title="Envoyer par email"
+              onClick={handlePrint}
+              className="size-9 flex items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              title="Imprimer"
             >
-              <Icon icon="solar:send-square-bold" className="size-5" />
+              <Icon icon="solar:printer-bold" className="size-5" />
             </button>
           </div>
         </div>
@@ -122,7 +229,7 @@ export function Planning() {
       ) : (
         <div className="pb-24 px-4 mt-4">
           <div className="overflow-x-auto">
-            <div className="inline-block min-w-full border border-border rounded-xl overflow-hidden shadow-sm">
+            <div className="inline-block min-w-full border border-border rounded-xl overflow-hidden shadow-sm planning-grid">
             {/* Event banner - aligned with planning */}
             {activeEvent && (
               <div 
@@ -265,6 +372,41 @@ export function Planning() {
           weekStart={currentWeekStart}
           onClose={() => setSelectedEmployeeId(null)}
         />
+      )}
+      
+      {/* Duplicate Modal */}
+      {showDuplicateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-2xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-foreground mb-2">Dupliquer le planning</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Voulez-vous copier le planning de la semaine {weekNumber} sur la semaine {weekNumber + 1} ?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDuplicateModal(false)}
+                disabled={isDuplicating}
+                className="flex-1 px-4 py-3 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:bg-muted transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDuplicateWeek}
+                disabled={isDuplicating}
+                className="flex-1 px-4 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDuplicating ? (
+                  <>
+                    <Icon icon="solar:spinner-bold" className="size-5 animate-spin" />
+                    Duplication...
+                  </>
+                ) : (
+                  'Dupliquer'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

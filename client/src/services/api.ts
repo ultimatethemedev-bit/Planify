@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { useAuthStore } from '../stores/authStore'
 
+// @ts-ignore - Vite import.meta.env
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 export const api = axios.create({
@@ -183,6 +184,33 @@ export const settingsApi = {
   
   deleteEvent: async (id: string) => {
     const { data } = await api.delete(`/settings/events/${id}`)
+    return data
+  },
+  
+  getShiftTemplates: async () => {
+    const { data } = await api.get('/settings/shift-templates')
+    return data
+  },
+  
+  updateShiftTemplates: async (templates: Array<{
+    name: string
+    startTime: string
+    endTime: string
+  }>) => {
+    const { data } = await api.put('/settings/shift-templates', templates)
+    return data
+  },
+  
+  getWeekNumberConfig: async () => {
+    const { data } = await api.get('/settings/week-number-config')
+    return data
+  },
+  
+  updateWeekNumberConfig: async (config: {
+    referenceDate: string
+    referenceWeekNumber: number
+  }) => {
+    const { data } = await api.put('/settings/week-number-config', config)
     return data
   },
 }
