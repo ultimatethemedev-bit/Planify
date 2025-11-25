@@ -172,3 +172,108 @@ textarea {
 .animate-slide-up {
   animation: slideUp 0.2s ease-out;
 }
+
+/* ============================================
+   PRINT STYLES - Format paysage optimisé
+   ============================================ */
+@media print {
+  /* Format paysage */
+  @page {
+    size: landscape;
+    margin: 1cm;
+  }
+
+  /* Masquer éléments UI inutiles */
+  nav,
+  footer,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Container principal */
+  body {
+    background: white !important;
+  }
+
+  /* Planning page adjustments */
+  .pb-24 {
+    padding-bottom: 0 !important;
+  }
+
+  .px-4 {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  /* Planning grid - full width */
+  .planning-grid {
+    width: 100% !important;
+    min-width: 100% !important;
+    page-break-inside: avoid;
+    overflow: visible !important;
+  }
+
+  /* Overflow container visible */
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  /* Event banner - keep visible */
+  .planning-grid > div:first-child {
+    display: flex !important;
+  }
+
+  /* Adjust grid to fit page */
+  .inline-block {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  /* Ensure colors print correctly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Remove shadows for cleaner print */
+  .shadow-sm,
+  .shadow-xl,
+  .shadow-2xl {
+    box-shadow: none !important;
+  }
+
+  /* Optimize text for print */
+  body {
+    font-size: 10pt;
+  }
+
+  /* Compact spacing for print */
+  .p-2 {
+    padding: 0.25rem !important;
+  }
+
+  .p-4 {
+    padding: 0.5rem !important;
+  }
+
+  .py-3,
+  .py-4 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  /* Keep borders visible */
+  .border,
+  .border-border,
+  .border-r,
+  .border-b {
+    border-color: #ddd !important;
+  }
+
+  /* Print-only elements */
+  .print\:block {
+    display: block !important;
+  }
+}

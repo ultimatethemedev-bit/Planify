@@ -152,7 +152,7 @@ export function Planning() {
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
       {/* Header */}
-      <header className="bg-card shadow-sm sticky top-0 z-20">
+      <header className="bg-card shadow-sm sticky top-0 z-20 no-print">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2 w-32">
             <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
@@ -215,6 +215,14 @@ export function Planning() {
         </div>
       </header>
       
+      {/* Print-only header */}
+      <div className="hidden print:block text-center py-4">
+        <h1 className="text-2xl font-bold text-foreground mb-1">Planning - Semaine {weekNumber}</h1>
+        <p className="text-sm text-muted-foreground">
+          {format(currentWeekStart, 'd MMM', { locale: fr })} - {format(weekEnd, 'd MMM yyyy', { locale: fr })}
+        </p>
+      </div>
+      
       {/* Planning grid */}
       {employees.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
@@ -248,7 +256,7 @@ export function Planning() {
             
             {/* Days header */}
             <div className="flex bg-card border-b border-border sticky top-0 z-10">
-              <div className="w-[280px] px-4 py-3 font-semibold text-sm text-muted-foreground border-r border-border shrink-0">
+              <div className="min-w-[280px] flex-shrink-0 px-4 py-3 font-semibold text-sm text-muted-foreground border-r border-border">
                 Employés
               </div>
               <div className="flex flex-1">
@@ -257,7 +265,7 @@ export function Planning() {
                   return (
                     <div 
                       key={index} 
-                      className={`flex-1 px-3 py-3 text-center border-r border-border last:border-r-0 ${
+                      className={`flex-1 min-w-[120px] px-3 py-3 text-center border-r border-border last:border-r-0 ${
                         isToday ? 'bg-primary/5' : ''
                       }`}
                     >
@@ -285,7 +293,7 @@ export function Planning() {
                   onClick={() => handleEmployeeClick(employee._id)}
                 >
                   {/* Employee info */}
-                  <div className="w-[280px] px-4 py-4 border-r border-border shrink-0">
+                  <div className="min-w-[280px] flex-shrink-0 px-4 py-4 border-r border-border">
                     <div className="flex items-center gap-3">
                       <div 
                         className="size-12 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
@@ -322,7 +330,7 @@ export function Planning() {
                       return (
                         <div 
                           key={dayIndex} 
-                          className={`flex-1 p-2 border-r border-border last:border-r-0 ${
+                          className={`flex-1 min-w-[120px] p-2 border-r border-border last:border-r-0 ${
                             isToday ? 'bg-primary/5' : ''
                           }`}
                         >
