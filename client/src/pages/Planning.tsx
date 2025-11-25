@@ -141,16 +141,16 @@ export function Planning() {
             
             {/* Days header */}
             <div className="flex bg-card border-b border-border sticky top-0 z-10">
-              <div className="w-[200px] px-4 py-3 font-semibold text-sm text-muted-foreground border-r border-border shrink-0">
+              <div className="w-[280px] px-4 py-3 font-semibold text-sm text-muted-foreground border-r border-border shrink-0">
                 Employés
               </div>
-              <div className="flex">
+              <div className="flex flex-1">
                 {weekDays.map((date, index) => {
                   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
                   return (
                     <div 
                       key={index} 
-                      className={`w-[140px] px-3 py-3 text-center border-r border-border last:border-r-0 ${
+                      className={`flex-1 px-3 py-3 text-center border-r border-border last:border-r-0 ${
                         isToday ? 'bg-primary/5' : ''
                       }`}
                     >
@@ -158,7 +158,7 @@ export function Planning() {
                         {DAYS_SHORT_FR[index].toUpperCase()}
                       </div>
                       <div className={`text-xs ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {format(date, 'd')}
+                        {format(date, 'd/MM')}
                       </div>
                     </div>
                   )
@@ -178,7 +178,7 @@ export function Planning() {
                   onClick={() => handleEmployeeClick(employee._id)}
                 >
                   {/* Employee info */}
-                  <div className="w-[200px] px-4 py-4 border-r border-border shrink-0">
+                  <div className="w-[280px] px-4 py-4 border-r border-border shrink-0">
                     <div className="flex items-center gap-3">
                       <div 
                         className="size-12 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
@@ -205,7 +205,7 @@ export function Planning() {
                   </div>
                   
                   {/* Shifts grid */}
-                  <div className="flex">
+                  <div className="flex flex-1">
                     {weekDays.map((date, dayIndex) => {
                       const shift = getShiftForDay(employee._id, date)
                       const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
@@ -215,7 +215,7 @@ export function Planning() {
                       return (
                         <div 
                           key={dayIndex} 
-                          className={`w-[140px] p-2 border-r border-border last:border-r-0 ${
+                          className={`flex-1 p-2 border-r border-border last:border-r-0 ${
                             isToday ? 'bg-primary/5' : ''
                           }`}
                         >
