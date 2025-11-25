@@ -179,17 +179,17 @@ export function Settings() {
               return (
                 <div key={dayKey} className="flex items-center justify-between">
                   <span className="text-sm font-medium text-foreground w-20">{DAYS_FR[index]}</span>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {/* Toggle */}
                     <button
                       onClick={() => handleDayToggle(dayKey)}
-                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                      className={`relative w-10 h-5 rounded-full transition-colors ${
                         dayHours.isOpen ? 'bg-primary' : 'bg-border'
                       }`}
                     >
                       <div 
-                        className={`absolute top-0.5 left-0.5 size-5 bg-white rounded-full transition-transform ${
-                          dayHours.isOpen ? 'translate-x-6' : 'translate-x-0'
+                        className={`absolute top-0.5 left-0.5 size-4 bg-white rounded-full transition-transform ${
+                          dayHours.isOpen ? 'translate-x-5' : 'translate-x-0'
                         }`} 
                       />
                     </button>
@@ -200,17 +200,17 @@ export function Settings() {
                       value={dayHours.openTime}
                       onChange={(e) => handleTimeChange(dayKey, 'openTime', e.target.value)}
                       disabled={!dayHours.isOpen}
-                      className={`w-28 px-3 py-2 text-sm rounded-lg border border-border bg-input ${
+                      className={`w-20 px-2 py-1.5 text-sm rounded-lg border border-border bg-input ${
                         !dayHours.isOpen ? 'opacity-50' : ''
                       }`}
                     />
-                    <span className={`text-muted-foreground ${!dayHours.isOpen ? 'opacity-50' : ''}`}>-</span>
+                    <span className={`text-muted-foreground text-sm ${!dayHours.isOpen ? 'opacity-50' : ''}`}>-</span>
                     <input
                       type="time"
                       value={dayHours.closeTime}
                       onChange={(e) => handleTimeChange(dayKey, 'closeTime', e.target.value)}
                       disabled={!dayHours.isOpen}
-                      className={`w-28 px-3 py-2 text-sm rounded-lg border border-border bg-input ${
+                      className={`w-20 px-2 py-1.5 text-sm rounded-lg border border-border bg-input ${
                         !dayHours.isOpen ? 'opacity-50' : ''
                       }`}
                     />
@@ -243,7 +243,7 @@ export function Settings() {
           </p>
           <div className="space-y-4">
             {shiftTemplates.map((template, index) => (
-              <div key={index} className="flex items-center gap-4">
+              <div key={index} className="flex items-center gap-3">
                 <input
                   type="text"
                   value={template.name}
@@ -251,10 +251,10 @@ export function Settings() {
                     updateShiftTemplate(index, { ...template, name: e.target.value })
                     setHasTemplatesChanged(true)
                   }}
-                  className="w-32 px-3 py-2 text-sm font-medium rounded-lg border border-border bg-input"
+                  className="w-24 px-2 py-2 text-sm font-medium rounded-lg border border-border bg-input"
                   placeholder="Nom"
                 />
-                <div className="flex items-center gap-2 flex-1">
+                <div className="flex items-center gap-2">
                   <input
                     type="time"
                     value={template.startTime}
@@ -262,9 +262,9 @@ export function Settings() {
                       updateShiftTemplate(index, { ...template, startTime: e.target.value })
                       setHasTemplatesChanged(true)
                     }}
-                    className="w-28 px-3 py-2 text-sm rounded-lg border border-border bg-input"
+                    className="w-20 px-2 py-2 text-sm rounded-lg border border-border bg-input"
                   />
-                  <span className="text-muted-foreground">-</span>
+                  <span className="text-muted-foreground text-sm">-</span>
                   <input
                     type="time"
                     value={template.endTime}
@@ -272,7 +272,7 @@ export function Settings() {
                       updateShiftTemplate(index, { ...template, endTime: e.target.value })
                       setHasTemplatesChanged(true)
                     }}
-                    className="w-28 px-3 py-2 text-sm rounded-lg border border-border bg-input"
+                    className="w-20 px-2 py-2 text-sm rounded-lg border border-border bg-input"
                   />
                 </div>
               </div>

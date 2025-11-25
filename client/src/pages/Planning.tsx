@@ -71,8 +71,9 @@ export function Planning() {
               <div className="text-xs font-semibold text-primary mb-0.5">
                 Semaine {weekNumber}
               </div>
-              <div className="text-sm font-bold text-foreground">
-                {format(currentWeekStart, 'EEE d MMM', { locale: fr })} - {format(weekEnd, 'EEE d MMM yyyy', { locale: fr })}
+              <div className="text-xs sm:text-sm font-bold text-foreground">
+                <span className="hidden sm:inline">{format(currentWeekStart, 'EEE d MMM', { locale: fr })} - {format(weekEnd, 'EEE d MMM yyyy', { locale: fr })}</span>
+                <span className="sm:hidden">{format(currentWeekStart, 'd MMM', { locale: fr })} - {format(weekEnd, 'd MMM', { locale: fr })}</span>
               </div>
             </div>
             <button 
@@ -84,9 +85,9 @@ export function Planning() {
           </div>
           
           {/* Actions */}
-          <div className="flex items-center gap-2 w-32 justify-end">
+          <div className="flex items-center gap-2 justify-end">
             <button 
-              className="size-9 flex items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="size-9 flex items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:bg-muted hover:text-foreground transition-colors hidden sm:flex"
               title="Dupliquer la semaine"
             >
               <Icon icon="solar:copy-bold" className="size-5" />
@@ -98,7 +99,7 @@ export function Planning() {
               <Icon icon="solar:document-bold" className="size-5" />
             </button>
             <button 
-              className="size-9 flex items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="size-9 flex items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:bg-muted hover:text-foreground transition-colors hidden sm:flex"
               title="Envoyer par email"
             >
               <Icon icon="solar:send-square-bold" className="size-5" />
@@ -119,8 +120,9 @@ export function Planning() {
           </p>
         </div>
       ) : (
-        <div className="pb-24 flex justify-center px-4 mt-4">
-          <div className="inline-block border border-border rounded-xl overflow-hidden shadow-sm">
+        <div className="pb-24 px-4 mt-4">
+          <div className="overflow-x-auto">
+            <div className="inline-block min-w-full border border-border rounded-xl overflow-hidden shadow-sm">
             {/* Event banner - aligned with planning */}
             {activeEvent && (
               <div 
@@ -252,6 +254,7 @@ export function Planning() {
               )
             })}
           </div>
+        </div>
         </div>
       )}
       

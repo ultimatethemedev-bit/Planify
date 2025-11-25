@@ -227,31 +227,31 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
-          <div className="flex items-center gap-4">
+        <div className="sticky top-0 bg-card border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
             <div 
-              className="size-16 rounded-full flex items-center justify-center text-white text-xl font-bold"
+              className="size-12 sm:size-16 rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-bold shrink-0"
               style={{ backgroundColor: employee.color }}
             >
               {employee.firstName.charAt(0)}{employee.lastName.charAt(0)}
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-foreground font-heading">
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold text-foreground font-heading truncate">
                 {employee.firstName} {employee.lastName}
               </h2>
-              <p className="text-sm text-muted-foreground">{employee.weeklyHours}h/semaine</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{employee.weeklyHours}h/semaine</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="size-10 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors"
+            className="size-10 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors shrink-0"
           >
             <Icon icon="solar:close-circle-bold" className="size-6 text-muted-foreground" />
           </button>
         </div>
         
         {/* Templates */}
-        <div className="px-6 py-4">
+        <div className="px-4 sm:px-6 py-4">
           {selectedDay && (
             <p className="text-sm text-primary font-medium mb-3">
               📍 Sélection : {DAYS_FR[weekDays.findIndex(d => format(d, 'yyyy-MM-dd') === selectedDay)]} — cliquez un template pour l'appliquer
@@ -289,7 +289,7 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
         </div>
         
         {/* Days */}
-        <div className="px-6 py-2 space-y-3">
+        <div className="px-4 sm:px-6 py-2 space-y-3">
           {weekDays.map((date, index) => {
             const dateStr = format(date, 'yyyy-MM-dd')
             const dayShift = shifts[dateStr] || { startTime: '', endTime: '' }
@@ -315,7 +315,7 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
               >
                 <div className="flex items-center gap-4">
                   <div 
-                    className="w-24 font-semibold text-foreground cursor-pointer"
+                    className="w-16 sm:w-24 font-semibold text-foreground cursor-pointer shrink-0"
                     onClick={() => setSelectedDay(isSelected ? null : dateStr)}
                     title="Cliquer pour sélectionner ce jour"
                   >
@@ -333,30 +333,24 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                       <span className="block text-[10px] text-orange-700 font-normal">Congé payé</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="flex items-center gap-2 flex-1">
-                      <Icon icon="solar:clock-circle-bold" className="size-5 text-muted-foreground" />
-                      <input
-                        type="time"
-                        value={isCP ? '' : dayShift.startTime}
-                        onChange={(e) => handleTimeChange(dateStr, 'startTime', e.target.value)}
-                        disabled={isCP}
-                        className={`bg-input border border-border rounded-lg px-3 py-2 text-sm w-full ${(isRestDay || isCP) ? 'opacity-50' : ''}`}
-                        placeholder={isCP ? 'CP' : ''}
-                      />
-                    </div>
-                    <span className="text-muted-foreground">-</span>
-                    <div className="flex items-center gap-2 flex-1">
-                      <Icon icon="solar:clock-circle-bold" className="size-5 text-muted-foreground" />
-                      <input
-                        type="time"
-                        value={isCP ? '' : dayShift.endTime}
-                        onChange={(e) => handleTimeChange(dateStr, 'endTime', e.target.value)}
-                        disabled={isCP}
-                        className={`bg-input border border-border rounded-lg px-3 py-2 text-sm w-full ${(isRestDay || isCP) ? 'opacity-50' : ''}`}
-                        placeholder={isCP ? 'CP' : ''}
-                      />
-                    </div>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <input
+                      type="time"
+                      value={isCP ? '' : dayShift.startTime}
+                      onChange={(e) => handleTimeChange(dateStr, 'startTime', e.target.value)}
+                      disabled={isCP}
+                      className={`bg-input border border-border rounded-lg px-2 py-2 text-sm w-24 ${(isRestDay || isCP) ? 'opacity-50' : ''}`}
+                      placeholder={isCP ? 'CP' : ''}
+                    />
+                    <span className="text-muted-foreground text-sm">-</span>
+                    <input
+                      type="time"
+                      value={isCP ? '' : dayShift.endTime}
+                      onChange={(e) => handleTimeChange(dateStr, 'endTime', e.target.value)}
+                      disabled={isCP}
+                      className={`bg-input border border-border rounded-lg px-2 py-2 text-sm w-24 ${(isRestDay || isCP) ? 'opacity-50' : ''}`}
+                      placeholder={isCP ? 'CP' : ''}
+                    />
                     <button
                       onClick={() => {
                         if (isRestDay) {
@@ -370,7 +364,7 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                           handleTimeChange(dateStr, 'endTime', '00:00')
                         }
                       }}
-                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      className={`px-2 sm:px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
                         isRestDay 
                           ? 'bg-primary text-primary-foreground'
                           : isCP
@@ -379,7 +373,8 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                       }`}
                       title={isRestDay ? 'Annuler repos' : isCP ? 'Annuler CP' : 'Marquer repos'}
                     >
-                      {isRestDay ? '✓ Repos' : isCP ? '✓ CP' : 'Repos'}
+                      <span className="hidden sm:inline">{isRestDay ? '✓ Repos' : isCP ? '✓ CP' : 'Repos'}</span>
+                      <span className="sm:hidden">{isRestDay ? '✓ R' : isCP ? '✓ CP' : 'R'}</span>
                     </button>
                   </div>
                 </div>
@@ -433,9 +428,9 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
         )}
         
         {/* Total hours */}
-        <div className="px-6 py-4 border-t border-border">
+        <div className="px-4 sm:px-6 py-4 border-t border-border">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <div className={`text-2xl font-bold ${
+            <div className={`text-lg sm:text-2xl font-bold ${
               totalHours > employee.weeklyHours 
                 ? 'text-orange-500' 
                 : totalHours === employee.weeklyHours 
@@ -448,22 +443,23 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
         </div>
         
         {/* Footer */}
-        <div className="sticky bottom-0 bg-card border-t border-border px-6 py-4 flex gap-3 rounded-b-2xl">
+        <div className="sticky bottom-0 bg-card border-t border-border px-4 sm:px-6 py-4 flex gap-3 rounded-b-2xl">
           <button 
             onClick={onClose}
-            className="flex-1 px-6 py-3 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:bg-muted transition-colors"
+            className="flex-1 px-4 sm:px-6 py-3 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:bg-muted transition-colors"
           >
             Annuler
           </button>
           <button 
             onClick={handleSave}
             disabled={isLoading}
-            className="flex-1 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 px-4 sm:px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
                 <Icon icon="solar:spinner-bold" className="size-5 animate-spin" />
-                Enregistrement...
+                <span className="hidden sm:inline">Enregistrement...</span>
+                <span className="sm:hidden">...</span>
               </>
             ) : (
               'Enregistrer'

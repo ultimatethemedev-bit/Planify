@@ -51,7 +51,7 @@ export function Dashboard() {
       
       {/* Stats Cards */}
       <section className="px-6">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Employés actifs */}
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50 text-center">
             <div className="size-12 rounded-full bg-blue-50 flex items-center justify-center text-primary mx-auto mb-3">
