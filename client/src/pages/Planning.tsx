@@ -208,6 +208,7 @@ export function Planning() {
                       const shift = getShiftForDay(employee._id, date)
                       const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
                       const isRestDay = shift && shift.startTime === '00:00' && shift.endTime === '00:00'
+                      const isCP = shift && shift.startTime === 'CP' && shift.endTime === 'CP'
                       
                       return (
                         <div 
@@ -221,6 +222,12 @@ export function Planning() {
                               <div className="bg-secondary rounded-lg p-2 h-full flex items-center justify-center">
                                 <div className="text-xs font-bold text-muted-foreground">
                                   Repos
+                                </div>
+                              </div>
+                            ) : isCP ? (
+                              <div className="bg-orange-100 rounded-lg p-2 h-full flex items-center justify-center">
+                                <div className="text-xs font-bold text-orange-700">
+                                  CP
                                 </div>
                               </div>
                             ) : (

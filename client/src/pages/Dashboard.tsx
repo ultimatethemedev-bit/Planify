@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { format, startOfWeek, addDays, differenceInWeeks, parseISO } from 'date-fns'
@@ -13,8 +12,6 @@ export function Dashboard() {
   const { user } = useAuthStore()
   const { employees } = useEmployeesStore()
   const { events, weekNumberConfig } = useSettingsStore()
-  const [showCurrentEvents, setShowCurrentEvents] = useState(false)
-  const [showUpcomingEvents, setShowUpcomingEvents] = useState(false)
   
   const today = new Date()
   const todayStr = format(today, 'yyyy-MM-dd')
@@ -53,173 +50,59 @@ export function Dashboard() {
       </section>
       
       {/* Stats Cards */}
-      <section className="px-6 space-y-4">
-        <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50 flex items-center gap-4">
-          <div className="size-12 rounded-full bg-blue-50 flex items-center justify-center text-primary shrink-0">
-            <Icon icon="solar:users-group-two-rounded-bold" className="size-6" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-foreground">{employees.length}</div>
+      <section className="px-6">
+        <div className="grid grid-cols-3 gap-4">
+          {/* Employés actifs */}
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50 text-center">
+            <div className="size-12 rounded-full bg-blue-50 flex items-center justify-center text-primary mx-auto mb-3">
+              <Icon icon="solar:users-group-two-rounded-bold" className="size-6" />
+            </div>
+            <div className="text-2xl font-bold text-foreground mb-1">{employees.length}</div>
             <div className="text-sm text-muted-foreground font-medium">Employés actifs</div>
           </div>
-        </div>
-        
-        <div 
-          className="bg-card rounded-xl p-5 shadow-sm border border-border/50 flex items-center gap-4 cursor-pointer hover:bg-accent/30 transition-colors"
-          onClick={() => navigate('/planning')}
-        >
-          <div className="size-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-            <Icon icon="solar:chart-2-bold" className="size-6" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-baseline justify-between mb-1">
-              <div className="text-2xl font-bold text-foreground">Semaine {weekNumber}</div>
-              <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                {format(weekStart, 'd MMM', { locale: fr })} - {format(weekEnd, 'd MMM', { locale: fr })}
-              </span>
+          
+          {/* Semaine en cours */}
+          <div 
+            className="bg-card rounded-xl p-5 shadow-sm border border-border/50 text-center cursor-pointer hover:bg-accent/30 transition-colors"
+            onClick={() => navigate('/planning')}
+          >
+            <div className="size-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 mx-auto mb-3">
+              <Icon icon="solar:chart-2-bold" className="size-6" />
             </div>
-            <div className="text-sm text-muted-foreground font-medium mb-2">Semaine en cours</div>
-            <div className="w-full bg-secondary rounded-full h-1.5 overflow-hidden">
-              <div className="bg-primary h-full rounded-full w-0" />
+            <div className="text-2xl font-bold text-foreground mb-1">Semaine {weekNumber}</div>
+            <div className="text-xs text-muted-foreground font-medium">
+              {format(weekStart, 'd MMM', { locale: fr })} - {format(weekEnd, 'd MMM', { locale: fr })}
             </div>
           </div>
-        </div>
-        
-        {/* Événements en cours */}
-        {currentEvents.length > 0 && (
-          <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
-            <div 
-              className="p-5 flex items-center gap-4 cursor-pointer hover:bg-accent/30 transition-colors"
-              onClick={() => setShowCurrentEvents(!showCurrentEvents)}
-            >
-              <div className="size-12 rounded-full bg-green-50 flex items-center justify-center text-green-500 shrink-0">
+          
+          {/* Événement en cours */}
+          {currentEvents.length > 0 ? (
+            <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50 text-center">
+              <div className="size-12 rounded-full bg-green-50 flex items-center justify-center text-green-500 mx-auto mb-3">
                 <Icon icon="solar:calendar-mark-bold" className="size-6" />
               </div>
-              <div className="flex-1">
-                <div className="text-2xl font-bold text-foreground">{currentEvents.length}</div>
-                <div className="text-sm text-muted-foreground font-medium">
-                  Événement{currentEvents.length > 1 ? 's' : ''} en cours
-                </div>
+              <div className="text-sm font-semibold text-foreground mb-1">Événement en cours</div>
+              <div className="text-xs text-muted-foreground">
+                {currentEvents[0].emoji} {currentEvents[0].name}
               </div>
-              <Icon 
-                icon={showCurrentEvents ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} 
-                className="size-5 text-muted-foreground" 
-              />
-            </div>
-            {showCurrentEvents && (
-              <div className="px-5 pb-4 space-y-2 border-t border-border">
-                {currentEvents.map(evt => (
-                  <div key={evt._id} className="flex items-center gap-3 pt-3">
-                    <span className="text-xl">{evt.emoji}</span>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold">{evt.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {format(new Date(evt.startDate), 'd MMM', { locale: fr })} - {format(new Date(evt.endDate), 'd MMM', { locale: fr })}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="text-xs text-muted-foreground mt-1">
+                {format(new Date(currentEvents[0].startDate), 'd MMM', { locale: fr })} - {format(new Date(currentEvents[0].endDate), 'd MMM', { locale: fr })}
               </div>
-            )}
-          </div>
-        )}
-        
-        {/* Événements à venir */}
-        {upcomingEvents.length > 0 && (
-          <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
-            <div 
-              className="p-5 flex items-center gap-4 cursor-pointer hover:bg-accent/30 transition-colors"
-              onClick={() => setShowUpcomingEvents(!showUpcomingEvents)}
-            >
-              <div className="size-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 shrink-0">
-                <Icon icon="solar:calendar-add-bold" className="size-6" />
+            </div>
+          ) : (
+            <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50 text-center">
+              <div className="size-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 mx-auto mb-3">
+                <Icon icon="solar:calendar-minimalistic-bold" className="size-6" />
               </div>
-              <div className="flex-1">
-                <div className="text-2xl font-bold text-foreground">{upcomingEvents.length}</div>
-                <div className="text-sm text-muted-foreground font-medium">
-                  Événement{upcomingEvents.length > 1 ? 's' : ''} à venir
-                </div>
-              </div>
-              <Icon 
-                icon={showUpcomingEvents ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} 
-                className="size-5 text-muted-foreground" 
-              />
+              <div className="text-2xl font-bold text-foreground mb-1">0</div>
+              <div className="text-sm text-muted-foreground font-medium">Événement en cours</div>
             </div>
-            {showUpcomingEvents && (
-              <div className="px-5 pb-4 space-y-2 border-t border-border">
-                {upcomingEvents.map(evt => (
-                  <div key={evt._id} className="flex items-center gap-3 pt-3">
-                    <span className="text-xl">{evt.emoji}</span>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold">{evt.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {format(new Date(evt.startDate), 'd MMM', { locale: fr })} - {format(new Date(evt.endDate), 'd MMM', { locale: fr })}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-      
-      {/* Quick Actions */}
-      <section className="px-6 py-8">
-        <h2 className="text-lg font-semibold mb-4 font-heading">Actions Rapides</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <button 
-            onClick={() => navigate('/planning')}
-            className="flex flex-col items-center justify-center p-4 bg-primary text-primary-foreground rounded-xl shadow-sm active:scale-95 transition-transform h-32 text-center"
-          >
-            <div className="bg-white/20 p-2 rounded-full mb-3">
-              <Icon icon="solar:calendar-mark-bold" className="size-6" />
-            </div>
-            <span className="text-sm font-semibold leading-tight">
-              Planifier la<br />semaine
-            </span>
-          </button>
-          
-          <button 
-            onClick={() => navigate('/employees')}
-            className="flex flex-col items-center justify-center p-4 bg-card border border-border text-card-foreground rounded-xl shadow-sm active:bg-secondary transition-colors h-32 text-center"
-          >
-            <div className="bg-secondary p-2 rounded-full mb-3 text-foreground">
-              <Icon icon="solar:user-plus-bold" className="size-6" />
-            </div>
-            <span className="text-sm font-medium leading-tight">
-              Ajouter un<br />employé
-            </span>
-          </button>
-          
-          <button 
-            onClick={() => navigate('/settings')}
-            className="flex flex-col items-center justify-center p-4 bg-card border border-border text-card-foreground rounded-xl shadow-sm active:bg-secondary transition-colors h-32 text-center"
-          >
-            <div className="bg-secondary p-2 rounded-full mb-3 text-foreground">
-              <Icon icon="solar:calendar-minimalistic-bold" className="size-6" />
-            </div>
-            <span className="text-sm font-medium leading-tight">
-              Voir les<br />événements
-            </span>
-          </button>
-          
-          <button 
-            onClick={() => navigate('/settings')}
-            className="flex flex-col items-center justify-center p-4 bg-card border border-border text-card-foreground rounded-xl shadow-sm active:bg-secondary transition-colors h-32 text-center"
-          >
-            <div className="bg-secondary p-2 rounded-full mb-3 text-foreground">
-              <Icon icon="solar:settings-bold" className="size-6" />
-            </div>
-            <span className="text-sm font-medium leading-tight">
-              Paramètres<br />généraux
-            </span>
-          </button>
+          )}
         </div>
       </section>
       
       {/* Mini Week Preview */}
-      <section className="px-6 pb-6">
+      <section className="px-6 pb-6 mt-8">
         <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold font-heading">Cette semaine</h2>

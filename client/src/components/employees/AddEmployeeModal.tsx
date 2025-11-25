@@ -28,21 +28,6 @@ export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
   
   const isEditing = !!employee
   
-  // Couleurs déjà utilisées par d'autres employés (sauf l'employé en cours d'édition)
-  const usedColors = employees
-    .filter(emp => emp._id !== employee?._id)
-    .map(emp => emp.color)
-  
-  // Sélectionner la première couleur disponible par défaut
-  useEffect(() => {
-    if (!employee) {
-      const firstAvailable = EMPLOYEE_COLORS.find(c => !usedColors.includes(c.value))
-      if (firstAvailable) {
-        setSelectedColor(firstAvailable.value)
-      }
-    }
-  }, [employee, usedColors])
-  
   // Gestion de l'upload de photo
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -273,32 +258,23 @@ export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
           <div>
             <label className="block text-sm font-medium text-foreground mb-3">Couleur planning</label>
             <div className="flex gap-3 flex-wrap">
-              {EMPLOYEE_COLORS.map((color) => {
-                const isUsed = usedColors.includes(color.value)
-                return (
-                  <button
-                    key={color.value}
-                    type="button"
-                    onClick={() => !isUsed && setSelectedColor(color.value)}
-                    disabled={isUsed}
-                    className={`size-10 rounded-full border-2 transition-all ${
-                      selectedColor === color.value 
-                        ? 'border-primary scale-110' 
-                        : isUsed
-                          ? 'border-transparent opacity-30 cursor-not-allowed'
-                          : 'border-transparent hover:border-border'
-                    }`}
-                    style={{ backgroundColor: color.value }}
-                  >
-                    {selectedColor === color.value && (
-                      <Icon icon="solar:check-circle-bold" className="size-5 text-white mx-auto" />
-                    )}
-                    {isUsed && selectedColor !== color.value && (
-                      <Icon icon="solar:close-circle-bold" className="size-5 text-white/70 mx-auto" />
-                    )}
-                  </button>
-                )
-              })}
+              {EMPLOYEE_COLORS.map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  onClick={() => setSelectedColor(color.value)}
+                  className={`size-10 rounded-full border-2 transition-all ${
+                    selectedColor === color.value 
+                      ? 'border-primary scale-110' 
+                      : 'border-transparent hover:border-border'
+                  }`}
+                  style={{ backgroundColor: color.value }}
+                >
+                  {selectedColor === color.value && (
+                    <Icon icon="solar:check-circle-bold" className="size-5 text-white mx-auto" />
+                  )}
+                </button>
+              ))}
             </div>
           </div>
         </form>

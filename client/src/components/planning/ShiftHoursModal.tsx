@@ -123,6 +123,38 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
     }
   }
   
+  const applyCP = () => {
+    if (selectedDay) {
+      // Appliquer CP au jour sélectionné uniquement
+      setShifts(prev => ({
+        ...prev,
+        [selectedDay]: {
+          startTime: 'CP',
+          endTime: 'CP',
+        }
+      }))
+      toast.success(`CP appliqué à ${DAYS_FR[weekDays.findIndex(d => format(d, 'yyyy-MM-dd') === selectedDay)]}`)
+      setSelectedDay(null)
+    } else {
+      // Appliquer CP du lundi au vendredi (5 jours)
+      setShifts(prev => {
+        const updated = { ...prev }
+        weekDays.forEach((date, index) => {
+          // Index 0-4 = Lundi à Vendredi
+          if (index >= 0 && index <= 4) {
+            const dateStr = format(date, 'yyyy-MM-dd')
+            updated[dateStr] = {
+              startTime: 'CP',
+              endTime: 'CP',
+            }
+          }
+        })
+        return updated
+      })
+      toast.success('CP appliqué du lundi au vendredi (5 jours)')
+    }
+  }
+  
   const copyMondayToAll = () => {
     const mondayDateStr = format(weekDays[0], 'yyyy-MM-dd')
     const mondayShift = shifts[mondayDateStr]
@@ -240,10 +272,10 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
               </button>
             ))}
             <button
-              onClick={() => applyTemplate({ name: 'Repos', startTime: '00:00', endTime: '00:00' })}
-              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-muted transition-colors"
+              onClick={applyCP}
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors"
             >
-              Repos
+              {selectedDay ? 'CP (1 jour)' : 'CP (5 jours)'}
             </button>
             {selectedDay && (
               <button
@@ -263,6 +295,7 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
             const dayShift = shifts[dateStr] || { startTime: '', endTime: '' }
             const isSunday = index === 6
             const isRestDay = dayShift.startTime === '00:00' && dayShift.endTime === '00:00'
+            const isCP = dayShift.startTime === 'CP' && dayShift.endTime === 'CP'
             const isSelected = selectedDay === dateStr
             
             return (
@@ -274,8 +307,10 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                     : isSunday 
                       ? 'border-orange-200 bg-orange-50/30 hover:bg-orange-50/50' 
                       : isRestDay 
-                        ? 'border-gray-300 bg-gray-50 hover:bg-gray-100' 
-                        : 'border-border hover:bg-accent/30'
+                        ? 'border-gray-300 bg-gray-50 hover:bg-gray-100'
+                        : isCP
+                          ? 'border-orange-300 bg-orange-50 hover:bg-orange-100'
+                          : 'border-border hover:bg-accent/30'
                 }`}
               >
                 <div className="flex items-center gap-4">
@@ -288,11 +323,14 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                       {isSelected && <Icon icon="solar:check-circle-bold" className="size-4 text-primary" />}
                       {DAYS_FR[index]}
                     </div>
-                    {isSunday && !isRestDay && (
+                    {isSunday && !isRestDay && !isCP && (
                       <span className="block text-[10px] text-orange-600 font-normal">+100%</span>
                     )}
                     {isRestDay && (
                       <span className="block text-[10px] text-muted-foreground font-normal">Repos</span>
+                    )}
+                    {isCP && (
+                      <span className="block text-[10px] text-orange-700 font-normal">Congé payé</span>
                     )}
                   </div>
                   <div className="flex items-center gap-3 flex-1">
@@ -300,9 +338,11 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                       <Icon icon="solar:clock-circle-bold" className="size-5 text-muted-foreground" />
                       <input
                         type="time"
-                        value={dayShift.startTime}
+                        value={isCP ? '' : dayShift.startTime}
                         onChange={(e) => handleTimeChange(dateStr, 'startTime', e.target.value)}
-                        className={`bg-input border border-border rounded-lg px-3 py-2 text-sm w-full ${isRestDay ? 'opacity-50' : ''}`}
+                        disabled={isCP}
+                        className={`bg-input border border-border rounded-lg px-3 py-2 text-sm w-full ${(isRestDay || isCP) ? 'opacity-50' : ''}`}
+                        placeholder={isCP ? 'CP' : ''}
                       />
                     </div>
                     <span className="text-muted-foreground">-</span>
@@ -310,14 +350,19 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                       <Icon icon="solar:clock-circle-bold" className="size-5 text-muted-foreground" />
                       <input
                         type="time"
-                        value={dayShift.endTime}
+                        value={isCP ? '' : dayShift.endTime}
                         onChange={(e) => handleTimeChange(dateStr, 'endTime', e.target.value)}
-                        className={`bg-input border border-border rounded-lg px-3 py-2 text-sm w-full ${isRestDay ? 'opacity-50' : ''}`}
+                        disabled={isCP}
+                        className={`bg-input border border-border rounded-lg px-3 py-2 text-sm w-full ${(isRestDay || isCP) ? 'opacity-50' : ''}`}
+                        placeholder={isCP ? 'CP' : ''}
                       />
                     </div>
                     <button
                       onClick={() => {
                         if (isRestDay) {
+                          handleTimeChange(dateStr, 'startTime', '')
+                          handleTimeChange(dateStr, 'endTime', '')
+                        } else if (isCP) {
                           handleTimeChange(dateStr, 'startTime', '')
                           handleTimeChange(dateStr, 'endTime', '')
                         } else {
@@ -327,12 +372,14 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                       }}
                       className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                         isRestDay 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'bg-secondary text-secondary-foreground hover:bg-muted'
+                          ? 'bg-primary text-primary-foreground'
+                          : isCP
+                            ? 'bg-orange-500 text-white'
+                            : 'bg-secondary text-secondary-foreground hover:bg-muted'
                       }`}
-                      title={isRestDay ? 'Annuler repos' : 'Marquer repos'}
+                      title={isRestDay ? 'Annuler repos' : isCP ? 'Annuler CP' : 'Marquer repos'}
                     >
-                      {isRestDay ? '✓ Repos' : 'Repos'}
+                      {isRestDay ? '✓ Repos' : isCP ? '✓ CP' : 'Repos'}
                     </button>
                   </div>
                 </div>
