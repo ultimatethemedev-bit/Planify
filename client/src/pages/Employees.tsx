@@ -37,8 +37,6 @@ export function Employees() {
   })
   
   const handleDelete = async (employee: Employee) => {
-    if (!confirm(`Supprimer ${employee.firstName} ${employee.lastName} ?`)) return
-    
     try {
       await employeesApi.delete(employee._id)
       deleteEmployee(employee._id)

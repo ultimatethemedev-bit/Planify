@@ -127,21 +127,124 @@ export function Planning() {
         return
       }
       
-      toast.info('Génération de l\'image...')
+      toast.loading('Génération de l\'image...', { id: 'export' })
       
-      const canvas = await html2canvas(planningElement, {
-        backgroundColor: '#ffffff',
-        scale: 2,
+      // Créer un container temporaire pour l'export
+      const exportContainer = document.createElement('div')
+      exportContainer.style.cssText = `
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        background: white;
+        padding: 32px;
+        min-width: 1600px;
+      `
+      
+      // Ajouter un titre
+      const title = document.createElement('div')
+      title.innerHTML = `
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="font-size: 28px; font-weight: bold; color: #0F172A; margin: 0 0 8px 0; font-family: Inter, sans-serif;">
+            Planning - Semaine ${weekNumber}
+          </h1>
+          <p style="font-size: 16px; color: #64748B; margin: 0; font-family: Inter, sans-serif;">
+            ${format(currentWeekStart, 'd MMMM', { locale: fr })} - ${format(weekEnd, 'd MMMM yyyy', { locale: fr })}
+          </p>
+        </div>
+      `
+      exportContainer.appendChild(title)
+      
+      // Cloner le planning grid
+      const clonedGrid = planningElement.cloneNode(true) as HTMLElement
+      clonedGrid.style.cssText = `
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #E2E8F0;
+        width: 100%;
+      `
+      
+      // Retirer truncate sur les noms
+      const truncatedElements = clonedGrid.querySelectorAll('.truncate')
+      truncatedElements.forEach(el => {
+        (el as HTMLElement).style.cssText = `
+          overflow: visible;
+          text-overflow: clip;
+          white-space: nowrap;
+        `
       })
       
+      // Fix avatars (cercles avec initiales) - forcer centrage
+      const avatars = clonedGrid.querySelectorAll('.rounded-full')
+      avatars.forEach(el => {
+        const element = el as HTMLElement
+        // Seulement les cercles d'avatar (pas les petits points de couleur)
+        if (element.classList.contains('size-12') || element.style.width === '48px') {
+          element.style.display = 'flex'
+          element.style.alignItems = 'center'
+          element.style.justifyContent = 'center'
+          element.style.textAlign = 'center'
+        }
+      })
+      
+      // Fix toutes les cards de shift (horaires, repos, CP)
+      const allCells = clonedGrid.querySelectorAll('.p-2 > div, .p-2 > .bg-secondary, .p-2 > .bg-orange-100')
+      allCells.forEach(el => {
+        const element = el as HTMLElement
+        const bgColor = window.getComputedStyle(element).backgroundColor
+        // Si c'est une card colorée (pas transparent)
+        if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+          element.style.display = 'flex'
+          element.style.alignItems = 'center'
+          element.style.justifyContent = 'center'
+          element.style.minHeight = '60px'
+          element.style.textAlign = 'center'
+        }
+      })
+      
+      // Fix cards avec classe rounded-lg (shift cards)
+      const shiftCards = clonedGrid.querySelectorAll('.rounded-lg')
+      shiftCards.forEach(el => {
+        const element = el as HTMLElement
+        const bgColor = window.getComputedStyle(element).backgroundColor
+        // Si c'est une card avec background (pas la grille)
+        if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent' && bgColor !== 'rgb(255, 255, 255)') {
+          element.style.display = 'flex'
+          element.style.alignItems = 'center'
+          element.style.justifyContent = 'center'
+          element.style.minHeight = '60px'
+          element.style.textAlign = 'center'
+        }
+      })
+      
+      exportContainer.appendChild(clonedGrid)
+      
+      // Ajouter au DOM temporairement
+      document.body.appendChild(exportContainer)
+      
+      // Attendre pour le rendu complet
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      // Capturer
+      const canvas = await html2canvas(exportContainer, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      })
+      
+      // Supprimer le container temporaire
+      document.body.removeChild(exportContainer)
+      
+      // Télécharger
       const link = document.createElement('a')
       link.download = `planning-semaine-${weekNumber}.png`
-      link.href = canvas.toDataURL()
+      link.href = canvas.toDataURL('image/png')
       link.click()
       
-      toast.success('Planning exporté !')
+      toast.success('Planning exporté !', { id: 'export' })
     } catch (error) {
-      toast.error('Erreur lors de l\'export')
+      console.error('Erreur export:', error)
+      toast.error('Erreur lors de l\'export', { id: 'export' })
     }
   }
   
