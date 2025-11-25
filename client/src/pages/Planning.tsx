@@ -6,6 +6,7 @@ import { usePlanningStore } from '../stores/planningStore'
 import { useEmployeesStore } from '../stores/employeesStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { ShiftHoursModal } from '../components/planning/ShiftHoursModal'
+import { DayShiftModal } from '../components/planning/DayShiftModal'
 import { calculateWeeklyHours, getWeekDays, getColorClasses, DAYS_SHORT_FR } from '../utils/planning'
 import toast from 'react-hot-toast'
 
@@ -14,6 +15,7 @@ export function Planning() {
   const { employees } = useEmployeesStore()
   const { events, weekNumberConfig } = useSettingsStore()
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null)
+  const [selectedDayData, setSelectedDayData] = useState<{ employeeId: string; date: Date } | null>(null)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [isDuplicating, setIsDuplicating] = useState(false)
   const [isLoadingPlanning, setIsLoadingPlanning] = useState(false)
@@ -392,11 +394,13 @@ export function Planning() {
               return (
                 <div 
                   key={employee._id} 
-                  className="flex border-b border-border bg-card hover:bg-secondary/30 transition-colors cursor-pointer"
-                  onClick={() => handleEmployeeClick(employee._id)}
+                  className="flex border-b border-border bg-card"
                 >
-                  {/* Employee info */}
-                  <div className="min-w-[280px] flex-shrink-0 px-4 py-4 border-r border-border">
+                  {/* Employee info - Clic ouvre modal semaine complète */}
+                  <div 
+                    className="min-w-[280px] flex-shrink-0 px-4 py-4 border-r border-border hover:bg-secondary/30 transition-colors cursor-pointer"
+                    onClick={() => handleEmployeeClick(employee._id)}
+                  >
                     <div className="flex items-center gap-3">
                       <div 
                         className="size-12 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
@@ -433,9 +437,10 @@ export function Planning() {
                       return (
                         <div 
                           key={dayIndex} 
-                          className={`flex-1 min-w-[120px] p-2 border-r border-border last:border-r-0 ${
+                          className={`flex-1 min-w-[120px] p-2 border-r border-border last:border-r-0 hover:bg-secondary/30 transition-colors cursor-pointer ${
                             isToday ? 'bg-primary/5' : ''
                           }`}
+                          onClick={() => setSelectedDayData({ employeeId: employee._id, date })}
                         >
                           {shift ? (
                             isRestDay ? (
@@ -518,6 +523,16 @@ export function Planning() {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Day Shift Modal - Modal rapide pour un seul jour */}
+      {selectedDayData && (
+        <DayShiftModal
+          employeeId={selectedDayData.employeeId}
+          date={selectedDayData.date}
+          weekStart={currentWeekStart}
+          onClose={() => setSelectedDayData(null)}
+        />
       )}
     </div>
   )
