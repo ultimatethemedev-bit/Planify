@@ -86,6 +86,8 @@ export const checkLegalAlerts = (
   // 1. Check daily hours (max 10h/day)
   const shiftsByDay = new Map<string, Shift[]>()
   sortedShifts.forEach(shift => {
+    // Ignorer les jours de repos et CP
+    if (shift.startTime === '00:00' || shift.startTime === 'CP') return
     const existing = shiftsByDay.get(shift.date) || []
     shiftsByDay.set(shift.date, [...existing, shift])
   })
@@ -107,9 +109,10 @@ export const checkLegalAlerts = (
   })
   
   // 2. Check weekly hours (max 48h/week)
-  const weeklyMinutes = sortedShifts.reduce((acc, s) => 
-    acc + getShiftDuration(s.startTime, s.endTime), 0
-  )
+  const weeklyMinutes = sortedShifts.reduce((acc, s) => {
+    if (s.startTime === '00:00' || s.startTime === 'CP') return acc
+    return acc + getShiftDuration(s.startTime, s.endTime)
+  }, 0)
   const weeklyHours = minutesToHours(weeklyMinutes)
   
   if (weeklyHours > 48) {
@@ -120,49 +123,67 @@ export const checkLegalAlerts = (
     })
   }
   
-  // 3. Check 11h rest between shifts
-  for (let i = 0; i < sortedShifts.length - 1; i++) {
-    const current = sortedShifts[i]
-    const next = sortedShifts[i + 1]
+  // 3. Check 11h rest between shifts (only for consecutive work days)
+  const workDayShifts = sortedShifts.filter(s => 
+    s.startTime !== '00:00' && s.startTime !== 'CP'
+  )
+  
+  for (let i = 0; i < workDayShifts.length - 1; i++) {
+    const current = workDayShifts[i]
+    const next = workDayShifts[i + 1]
     
-    const currentEnd = new Date(`${current.date}T${current.endTime}`)
-    const nextStart = new Date(`${next.date}T${next.startTime}`)
+    // Vérifier uniquement si jours consécutifs
+    const currentDate = parseISO(current.date)
+    const nextDate = parseISO(next.date)
+    const daysDiff = Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24))
     
-    const restMinutes = differenceInMinutes(nextStart, currentEnd)
-    const restHours = minutesToHours(restMinutes)
-    
-    if (restHours < 11 && current.date !== next.date) {
-      alerts.push({
-        type: 'error',
-        code: 'MIN_REST_BETWEEN_SHIFTS',
-        message: `Moins de 11h de repos entre deux journées (${restHours}h)`,
-        day: format(parseISO(next.date), 'EEEE', { locale: fr }),
-      })
+    if (daysDiff === 1) {
+      const currentEnd = new Date(`${current.date}T${current.endTime}`)
+      const nextStart = new Date(`${next.date}T${next.startTime}`)
+      
+      const restMinutes = differenceInMinutes(nextStart, currentEnd)
+      const restHours = minutesToHours(restMinutes)
+      
+      if (restHours < 11) {
+        alerts.push({
+          type: 'error',
+          code: 'MIN_REST_BETWEEN_SHIFTS',
+          message: `Moins de 11h de repos entre deux journées (${restHours}h)`,
+          day: format(nextDate, 'EEEE', { locale: fr }),
+        })
+      }
     }
   }
   
-  // 4. Check 24h consecutive rest per week
-  const datesWorked = [...shiftsByDay.keys()].sort()
-  if (datesWorked.length === 7) {
+  // 4. Check max 6 consecutive work days
+  const workDates = [...shiftsByDay.keys()].sort()
+  let maxConsecutive = 0
+  let currentConsecutive = 0
+  let prevDate: Date | null = null
+  
+  workDates.forEach(dateStr => {
+    const date = parseISO(dateStr)
+    if (prevDate) {
+      const daysDiff = Math.round((date.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24))
+      if (daysDiff === 1) {
+        currentConsecutive++
+      } else {
+        currentConsecutive = 1
+      }
+    } else {
+      currentConsecutive = 1
+    }
+    maxConsecutive = Math.max(maxConsecutive, currentConsecutive)
+    prevDate = date
+  })
+  
+  if (maxConsecutive > 6) {
     alerts.push({
       type: 'error',
-      code: 'NO_WEEKLY_REST',
-      message: `Pas de repos hebdomadaire de 24h consécutives`,
+      code: 'MAX_CONSECUTIVE_DAYS',
+      message: `Plus de 6 jours consécutifs travaillés (${maxConsecutive} jours)`,
     })
   }
-  
-  // 5. Check Sunday work (info about +100% bonus)
-  sortedShifts.forEach(shift => {
-    const date = parseISO(shift.date)
-    if (date.getDay() === 0) {
-      alerts.push({
-        type: 'info',
-        code: 'SUNDAY_WORK',
-        message: `Travail le dimanche - majoration 100% applicable`,
-        day: format(date, 'EEEE d MMMM', { locale: fr }),
-      })
-    }
-  })
   
   return alerts
 }

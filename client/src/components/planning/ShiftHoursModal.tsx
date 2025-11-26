@@ -304,13 +304,11 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                 className={`bg-card border rounded-2xl p-4 transition-colors cursor-pointer ${
                   isSelected 
                     ? 'border-primary ring-2 ring-primary/20 bg-primary/5' 
-                    : isSunday 
-                      ? 'border-orange-200 bg-orange-50/30 hover:bg-orange-50/50' 
-                      : isRestDay 
-                        ? 'border-gray-300 bg-gray-50 hover:bg-gray-100'
-                        : isCP
-                          ? 'border-orange-300 bg-orange-50 hover:bg-orange-100'
-                          : 'border-border hover:bg-accent/30'
+                    : isRestDay 
+                      ? 'border-gray-300 bg-gray-50 hover:bg-gray-100'
+                      : isCP
+                        ? 'border-orange-300 bg-orange-50 hover:bg-orange-100'
+                        : 'border-border hover:bg-accent/30'
                 }`}
               >
                 <div className="flex items-center gap-4">
@@ -323,9 +321,6 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                       {isSelected && <Icon icon="solar:check-circle-bold" className="size-4 text-primary" />}
                       {DAYS_FR[index]}
                     </div>
-                    {isSunday && !isRestDay && !isCP && (
-                      <span className="block text-[10px] text-orange-600 font-normal">+100%</span>
-                    )}
                     {isRestDay && (
                       <span className="block text-[10px] text-muted-foreground font-normal">Repos</span>
                     )}
@@ -356,9 +351,6 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                         if (isRestDay) {
                           handleTimeChange(dateStr, 'startTime', '')
                           handleTimeChange(dateStr, 'endTime', '')
-                        } else if (isCP) {
-                          handleTimeChange(dateStr, 'startTime', '')
-                          handleTimeChange(dateStr, 'endTime', '')
                         } else {
                           handleTimeChange(dateStr, 'startTime', '00:00')
                           handleTimeChange(dateStr, 'endTime', '00:00')
@@ -367,31 +359,37 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                       className={`px-2 sm:px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
                         isRestDay 
                           ? 'bg-primary text-primary-foreground'
-                          : isCP
-                            ? 'bg-orange-500 text-white'
-                            : 'bg-secondary text-secondary-foreground hover:bg-muted'
+                          : 'bg-secondary text-secondary-foreground hover:bg-muted'
                       }`}
-                      title={isRestDay ? 'Annuler repos' : isCP ? 'Annuler CP' : 'Marquer repos'}
+                      title={isRestDay ? 'Annuler repos' : 'Marquer repos'}
                     >
-                      <span className="hidden sm:inline">{isRestDay ? '✓ Repos' : isCP ? '✓ CP' : 'Repos'}</span>
-                      <span className="sm:hidden">{isRestDay ? '✓ R' : isCP ? '✓ CP' : 'R'}</span>
+                      <span className="hidden sm:inline">{isRestDay ? '✓ Repos' : 'Repos'}</span>
+                      <span className="sm:hidden">{isRestDay ? '✓ R' : 'R'}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (isCP) {
+                          handleTimeChange(dateStr, 'startTime', '')
+                          handleTimeChange(dateStr, 'endTime', '')
+                        } else {
+                          handleTimeChange(dateStr, 'startTime', 'CP')
+                          handleTimeChange(dateStr, 'endTime', 'CP')
+                        }
+                      }}
+                      className={`px-2 sm:px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                        isCP 
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                      }`}
+                      title={isCP ? 'Annuler CP' : 'Marquer CP'}
+                    >
+                      {isCP ? '✓ CP' : 'CP'}
                     </button>
                   </div>
                 </div>
               </div>
             )
           })}
-        </div>
-        
-        {/* Copy Monday button */}
-        <div className="px-6 py-4">
-          <button 
-            onClick={copyMondayToAll}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-muted transition-colors"
-          >
-            <Icon icon="solar:copy-bold" className="size-5" />
-            <span>Copier Lundi sur toute la semaine</span>
-          </button>
         </div>
         
         {/* Alerts */}

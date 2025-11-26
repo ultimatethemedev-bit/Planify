@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Icon } from '@iconify/react'
 import { format, addDays, addWeeks, differenceInWeeks, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -8,6 +8,7 @@ import { useSettingsStore } from '../stores/settingsStore'
 import { ShiftHoursModal } from '../components/planning/ShiftHoursModal'
 import { DayShiftModal } from '../components/planning/DayShiftModal'
 import { calculateWeeklyHours, getWeekDays, getColorClasses, DAYS_SHORT_FR } from '../utils/planning'
+import { checkLegalAlerts, hasAlertForDay, LegalAlert } from '../utils/legalAlerts'
 import toast from 'react-hot-toast'
 
 export function Planning() {
@@ -42,6 +43,19 @@ export function Planning() {
     
     fetchPlanning()
   }, [currentWeekStart, setPlanning])
+  
+  // Calculer les alertes légales
+  const legalAlerts = useMemo(() => {
+    if (!planning?.shifts || planning.shifts.length === 0) return []
+    
+    // Créer un mapping des noms d'employés
+    const employeeNames: Record<string, string> = {}
+    employees.forEach(emp => {
+      employeeNames[emp._id] = `${emp.firstName} ${emp.lastName}`
+    })
+    
+    return checkLegalAlerts(planning.shifts, currentWeekStart, employeeNames)
+  }, [planning?.shifts, currentWeekStart, employees])
   
   // Calculer le numéro de semaine basé sur la config
   const getWeekNumber = () => {
@@ -433,15 +447,27 @@ export function Planning() {
                       const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
                       const isRestDay = shift && shift.startTime === '00:00' && shift.endTime === '00:00'
                       const isCP = shift && shift.startTime === 'CP' && shift.endTime === 'CP'
+                      const dateStr = format(date, 'yyyy-MM-dd')
+                      const dayAlert = hasAlertForDay(legalAlerts, employee._id, dateStr)
                       
                       return (
                         <div 
                           key={dayIndex} 
-                          className={`flex-1 min-w-[120px] p-2 border-r border-border last:border-r-0 hover:bg-secondary/30 transition-colors cursor-pointer ${
+                          className={`flex-1 min-w-[120px] p-2 border-r border-border last:border-r-0 hover:bg-secondary/30 transition-colors cursor-pointer relative ${
                             isToday ? 'bg-primary/5' : ''
                           }`}
                           onClick={() => setSelectedDayData({ employeeId: employee._id, date })}
                         >
+                          {/* Indicateur d'alerte */}
+                          {dayAlert && (
+                            <div 
+                              className="absolute top-1 right-1 z-10"
+                              title={dayAlert.message}
+                            >
+                              <Icon icon="solar:danger-triangle-bold" className="size-4 text-red-500" />
+                            </div>
+                          )}
+                          
                           {shift ? (
                             isRestDay ? (
                               <div className="bg-secondary rounded-lg p-2 h-full flex items-center justify-center">
@@ -457,7 +483,7 @@ export function Planning() {
                               </div>
                             ) : (
                               <div 
-                                className={`${colorClasses.bg} rounded-lg p-2 h-full flex items-center justify-center`}
+                                className={`${colorClasses.bg} rounded-lg p-2 h-full flex items-center justify-center ${dayAlert ? 'ring-2 ring-red-400' : ''}`}
                               >
                                 <div className={`text-xs font-bold ${colorClasses.text}`}>
                                   {shift.startTime}-{shift.endTime}
