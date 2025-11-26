@@ -4,7 +4,7 @@ import { format, addDays, addWeeks, differenceInWeeks, parseISO } from 'date-fns
 import { fr } from 'date-fns/locale'
 import { usePlanningStore } from '../stores/planningStore'
 import { useEmployeesStore } from '../stores/employeesStore'
-import { useSettingsStore } from '../stores/settingsStore'
+import { useSettingsStore, StoreHours } from '../stores/settingsStore'
 import { ShiftHoursModal } from '../components/planning/ShiftHoursModal'
 import { DayShiftModal } from '../components/planning/DayShiftModal'
 import { calculateWeeklyHours, getWeekDays, getColorClasses, DAYS_SHORT_FR } from '../utils/planning'
@@ -14,7 +14,7 @@ import toast from 'react-hot-toast'
 export function Planning() {
   const { currentWeekStart, goToNextWeek, goToPreviousWeek, planning, setPlanning } = usePlanningStore()
   const { employees } = useEmployeesStore()
-  const { events, weekNumberConfig } = useSettingsStore()
+  const { events, weekNumberConfig, storeHours } = useSettingsStore()
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null)
   const [selectedDayData, setSelectedDayData] = useState<{ employeeId: string; date: Date } | null>(null)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
@@ -56,6 +56,73 @@ export function Planning() {
     
     return checkLegalAlerts(planning.shifts, currentWeekStart, employeeNames)
   }, [planning?.shifts, currentWeekStart, employees])
+  
+  // Calculer les alertes de couverture boutique
+  interface CoverageAlert {
+    type: 'opening' | 'closing'
+    dayIndex: number
+    dayName: string
+    storeTime: string
+  }
+  
+  const coverageAlerts = useMemo((): CoverageAlert[] => {
+    if (!planning?.shifts || employees.length === 0) return []
+    
+    const alerts: CoverageAlert[] = []
+    const dayKeys: (keyof StoreHours)[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+    
+    weekDays.forEach((date, dayIndex) => {
+      const dateStr = format(date, 'yyyy-MM-dd')
+      const dayKey = dayKeys[dayIndex]
+      const dayConfig = storeHours[dayKey]
+      
+      // Si boutique fermée ce jour, pas de vérification
+      if (!dayConfig.isOpen) return
+      
+      // Trouver tous les shifts pour ce jour (hors repos et CP)
+      const dayShifts = planning.shifts.filter(s => 
+        s.date === dateStr && 
+        s.startTime !== '00:00' && 
+        s.startTime !== 'CP'
+      )
+      
+      // Si aucun shift ce jour
+      if (dayShifts.length === 0) {
+        alerts.push({
+          type: 'opening',
+          dayIndex,
+          dayName: dayNames[dayIndex],
+          storeTime: dayConfig.openTime
+        })
+        return // Pas besoin de checker la fermeture si personne du tout
+      }
+      
+      // Vérifier ouverture : au moins un shift qui commence à l'heure d'ouverture
+      const hasOpener = dayShifts.some(s => s.startTime <= dayConfig.openTime)
+      if (!hasOpener) {
+        alerts.push({
+          type: 'opening',
+          dayIndex,
+          dayName: dayNames[dayIndex],
+          storeTime: dayConfig.openTime
+        })
+      }
+      
+      // Vérifier fermeture : au moins un shift qui finit à l'heure de fermeture
+      const hasCloser = dayShifts.some(s => s.endTime >= dayConfig.closeTime)
+      if (!hasCloser) {
+        alerts.push({
+          type: 'closing',
+          dayIndex,
+          dayName: dayNames[dayIndex],
+          storeTime: dayConfig.closeTime
+        })
+      }
+    })
+    
+    return alerts
+  }, [planning?.shifts, employees, weekDays, storeHours])
   
   // Calculer le numéro de semaine basé sur la config
   const getWeekNumber = () => {
@@ -355,6 +422,32 @@ export function Planning() {
         </div>
       ) : (
         <div className="pb-24 px-4 mt-4">
+          {/* Alertes de couverture boutique */}
+          {coverageAlerts.length > 0 && (
+            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <div className="flex items-start gap-2">
+                <Icon icon="solar:danger-triangle-bold" className="size-5 text-amber-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-800 mb-1">Couverture horaire incomplète</p>
+                  <div className="flex flex-wrap gap-2">
+                    {coverageAlerts.map((alert, index) => (
+                      <span 
+                        key={index}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-medium"
+                      >
+                        <Icon 
+                          icon={alert.type === 'opening' ? 'solar:sunrise-bold' : 'solar:sunset-bold'} 
+                          className="size-3.5" 
+                        />
+                        {alert.dayName} : {alert.type === 'opening' ? 'ouverture' : 'fermeture'} ({alert.storeTime})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="overflow-x-auto">
             <div className="inline-block min-w-full border border-border rounded-xl overflow-hidden shadow-sm planning-grid">
             {/* Event banner - aligned with planning */}
@@ -431,9 +524,15 @@ export function Planning() {
                             className="size-2 rounded-full shrink-0"
                             style={{ backgroundColor: employee.color }}
                           />
+                          {/* Triangle alerte si dépassement heures contrat */}
+                          {weeklyHours > employee.weeklyHours && (
+                            <div title={`Dépassement de ${Math.round((weeklyHours - employee.weeklyHours) * 100) / 100}h`}>
+                              <Icon icon="solar:danger-triangle-bold" className="size-4 text-orange-500" />
+                            </div>
+                          )}
                         </div>
                         <div className="text-xs text-muted-foreground">{employee.weeklyHours}h/sem</div>
-                        <div className="text-xs text-muted-foreground mt-1">
+                        <div className={`text-xs mt-1 ${weeklyHours > employee.weeklyHours ? 'text-orange-500 font-medium' : 'text-muted-foreground'}`}>
                           {weeklyHours}h/{employee.weeklyHours}h
                         </div>
                       </div>

@@ -1,12 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Icon } from '@iconify/react'
-import { format } from 'date-fns'
+import { format, parseISO, differenceInMinutes } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useEmployeesStore } from '../../stores/employeesStore'
-import { usePlanningStore } from '../../stores/planningStore'
+import { usePlanningStore, Shift } from '../../stores/planningStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { planningApi } from '../../services/api'
+import { getShiftDuration, minutesToHours } from '../../utils/planning'
 import toast from 'react-hot-toast'
+
+interface DayAlert {
+  type: 'error' | 'warning'
+  message: string
+  suggestion?: string
+}
 
 interface DayShiftModalProps {
   employeeId: string
@@ -35,6 +42,94 @@ export function DayShiftModal({ employeeId, date, weekStart, onClose }: DayShift
   
   const isRestDay = startTime === '00:00' && endTime === '00:00'
   const isCP = startTime === 'CP' && endTime === 'CP'
+  
+  // Calculer les alertes pour ce jour
+  const dayAlerts = useMemo((): DayAlert[] => {
+    const alerts: DayAlert[] = []
+    
+    // Si repos ou CP, pas d'alertes
+    if (isRestDay || isCP || !startTime || !endTime || !startTime.includes(':') || !endTime.includes(':')) {
+      return alerts
+    }
+    
+    // 1. Vérifier durée max 10h
+    const duration = getShiftDuration(startTime, endTime)
+    const hours = minutesToHours(duration)
+    
+    if (hours > 10) {
+      const startMinutes = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1])
+      const endMinutes = parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1])
+      
+      // Option 1: Commencer plus tard
+      const suggestedStartMinutes = endMinutes - (10 * 60)
+      const suggestedStart = `${Math.floor(suggestedStartMinutes / 60).toString().padStart(2, '0')}:${(suggestedStartMinutes % 60).toString().padStart(2, '0')}`
+      
+      // Option 2: Finir plus tôt
+      const suggestedEndMinutes = startMinutes + (10 * 60)
+      const suggestedEnd = `${Math.floor(suggestedEndMinutes / 60).toString().padStart(2, '0')}:${(suggestedEndMinutes % 60).toString().padStart(2, '0')}`
+      
+      alerts.push({
+        type: 'error',
+        message: `Dépassement des 10h/jour maximum (${hours}h)`,
+        suggestion: `Commencer à ${suggestedStart} ou finir à ${suggestedEnd}`
+      })
+    }
+    
+    // 2. Vérifier repos 11h avec la veille
+    const employeeShifts = planning?.shifts?.filter(s => s.employeeId === employeeId) || []
+    const yesterday = new Date(date)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = format(yesterday, 'yyyy-MM-dd')
+    const yesterdayShift = employeeShifts.find(s => s.date === yesterdayStr)
+    
+    if (yesterdayShift && yesterdayShift.startTime !== '00:00' && yesterdayShift.startTime !== 'CP') {
+      const yesterdayEnd = new Date(`${yesterdayStr}T${yesterdayShift.endTime}`)
+      const todayStart = new Date(`${dateStr}T${startTime}`)
+      const restMinutes = differenceInMinutes(todayStart, yesterdayEnd)
+      const restHours = minutesToHours(restMinutes)
+      
+      if (restHours < 11) {
+        const neededMinutes = (11 * 60) - restMinutes
+        const currentStartMinutes = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1])
+        const suggestedStartMinutes = currentStartMinutes + neededMinutes
+        const suggestedStart = `${Math.floor(suggestedStartMinutes / 60).toString().padStart(2, '0')}:${(suggestedStartMinutes % 60).toString().padStart(2, '0')}`
+        
+        alerts.push({
+          type: 'error',
+          message: `Moins de 11h de repos depuis hier (${restHours}h)`,
+          suggestion: `Commencer à ${suggestedStart}`
+        })
+      }
+    }
+    
+    // 3. Vérifier repos 11h avec le lendemain
+    const tomorrow = new Date(date)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStr = format(tomorrow, 'yyyy-MM-dd')
+    const tomorrowShift = employeeShifts.find(s => s.date === tomorrowStr)
+    
+    if (tomorrowShift && tomorrowShift.startTime !== '00:00' && tomorrowShift.startTime !== 'CP') {
+      const todayEnd = new Date(`${dateStr}T${endTime}`)
+      const tomorrowStart = new Date(`${tomorrowStr}T${tomorrowShift.startTime}`)
+      const restMinutes = differenceInMinutes(tomorrowStart, todayEnd)
+      const restHours = minutesToHours(restMinutes)
+      
+      if (restHours < 11) {
+        const neededMinutes = (11 * 60) - restMinutes
+        const currentEndMinutes = parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1])
+        const suggestedEndMinutes = currentEndMinutes - neededMinutes
+        const suggestedEnd = `${Math.floor(suggestedEndMinutes / 60).toString().padStart(2, '0')}:${(suggestedEndMinutes % 60).toString().padStart(2, '0')}`
+        
+        alerts.push({
+          type: 'error',
+          message: `Moins de 11h de repos avant demain (${restHours}h)`,
+          suggestion: `Terminer à ${suggestedEnd}`
+        })
+      }
+    }
+    
+    return alerts
+  }, [startTime, endTime, isRestDay, isCP, planning?.shifts, employeeId, date, dateStr])
   
   // Templates par défaut + ceux de l'utilisateur
   const defaultTemplates = [
@@ -99,6 +194,19 @@ export function DayShiftModal({ employeeId, date, weekStart, onClose }: DayShift
       setIsLoading(false)
     }
   }
+  
+  // Gestion touche Entrée pour sauvegarder
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+        e.preventDefault()
+        handleSave()
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isLoading, startTime, endTime])
   
   if (!employee) return null
   
@@ -202,6 +310,31 @@ export function DayShiftModal({ employeeId, date, weekStart, onClose }: DayShift
           
           {isCP && (
             <p className="text-xs text-orange-600 mt-2 text-center">Congé payé</p>
+          )}
+          
+          {/* Alertes */}
+          {dayAlerts.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {dayAlerts.map((alert, index) => (
+                <div 
+                  key={index}
+                  className="bg-red-50 border border-red-200 rounded-lg p-3"
+                >
+                  <div className="flex items-start gap-2">
+                    <Icon icon="solar:danger-triangle-bold" className="size-4 text-red-500 mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-red-700">{alert.message}</p>
+                      {alert.suggestion && (
+                        <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                          <Icon icon="solar:lightbulb-bold" className="size-3" />
+                          {alert.suggestion}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
         

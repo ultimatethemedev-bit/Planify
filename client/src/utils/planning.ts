@@ -13,11 +13,18 @@ export interface LegalAlert {
   code: string
   message: string
   day?: string
+  suggestion?: string
+  startTime?: string
+  endTime?: string
 }
 
 // Parse time string (HH:mm) to minutes since midnight
 export const timeToMinutes = (time: string): number => {
-  const [hours, minutes] = time.split(':').map(Number)
+  if (!time || !time.includes(':')) return NaN
+  const parts = time.split(':')
+  const hours = parseInt(parts[0], 10)
+  const minutes = parseInt(parts[1], 10)
+  if (isNaN(hours) || isNaN(minutes)) return NaN
   return hours * 60 + minutes
 }
 
@@ -33,15 +40,31 @@ export const getShiftDuration = (startTime: string, endTime: string): number => 
     return 0
   }
   
-  const start = timeToMinutes(startTime)
-  let end = timeToMinutes(endTime)
-  
-  // Handle overnight shifts
-  if (end < start) {
-    end += 24 * 60
+  // Si c'est un CP
+  if (startTime === 'CP' || endTime === 'CP') {
+    return 0
   }
   
-  return end - start
+  // Si valeurs invalides ou vides
+  if (!startTime || !endTime || !startTime.includes(':') || !endTime.includes(':')) {
+    return 0
+  }
+  
+  const start = timeToMinutes(startTime)
+  const end = timeToMinutes(endTime)
+  
+  // Vérifier que les valeurs sont valides
+  if (isNaN(start) || isNaN(end)) {
+    return 0
+  }
+  
+  // Handle overnight shifts
+  let adjustedEnd = end
+  if (end < start) {
+    adjustedEnd += 24 * 60
+  }
+  
+  return adjustedEnd - start
 }
 
 // Check if shift is a rest day
@@ -53,9 +76,14 @@ export const isRestDay = (startTime: string, endTime: string): boolean => {
 export const calculateWeeklyHours = (shifts: Shift[], employeeId: string): number => {
   const employeeShifts = shifts.filter(s => s.employeeId === employeeId)
   const totalMinutes = employeeShifts.reduce((acc, shift) => {
-    return acc + getShiftDuration(shift.startTime, shift.endTime)
+    const duration = getShiftDuration(shift.startTime, shift.endTime)
+    // Protection contre NaN
+    if (isNaN(duration)) return acc
+    return acc + duration
   }, 0)
-  return minutesToHours(totalMinutes)
+  const hours = minutesToHours(totalMinutes)
+  // Protection finale contre NaN
+  return isNaN(hours) ? 0 : hours
 }
 
 // Calculate hours per day for an employee
@@ -99,11 +127,25 @@ export const checkLegalAlerts = (
     const hours = minutesToHours(totalMinutes)
     
     if (hours > 10) {
+      // Calculer les suggestions (basées sur le premier shift du jour)
+      const firstShift = dayShifts[0]
+      const startMinutes = timeToMinutes(firstShift.startTime)
+      const endMinutes = timeToMinutes(firstShift.endTime)
+      
+      const suggestedStartMinutes = endMinutes - (10 * 60)
+      const suggestedStart = `${Math.floor(suggestedStartMinutes / 60).toString().padStart(2, '0')}:${(suggestedStartMinutes % 60).toString().padStart(2, '0')}`
+      
+      const suggestedEndMinutes = startMinutes + (10 * 60)
+      const suggestedEnd = `${Math.floor(suggestedEndMinutes / 60).toString().padStart(2, '0')}:${(suggestedEndMinutes % 60).toString().padStart(2, '0')}`
+      
       alerts.push({
         type: 'error',
         code: 'MAX_DAILY_HOURS',
         message: `Dépassement des 10h/jour maximum (${hours}h)`,
         day: format(parseISO(date), 'EEEE', { locale: fr }),
+        suggestion: `Commencer à ${suggestedStart} ou finir à ${suggestedEnd}`,
+        startTime: firstShift.startTime,
+        endTime: firstShift.endTime,
       })
     }
   })

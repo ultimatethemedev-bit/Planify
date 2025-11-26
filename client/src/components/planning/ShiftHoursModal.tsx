@@ -66,8 +66,20 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
         endTime: shift.endTime,
       }))
     
-    const newAlerts = checkLegalAlerts(shiftsArray, employeeId, employee.weeklyHours)
-    setAlerts(newAlerts)
+    const legalAlerts = checkLegalAlerts(shiftsArray, employeeId, employee.weeklyHours)
+    
+    // Ajouter alerte si dépassement des heures contrat
+    const totalHrs = calculateWeeklyHours(shiftsArray, employeeId)
+    if (totalHrs > employee.weeklyHours) {
+      const overtime = Math.round((totalHrs - employee.weeklyHours) * 100) / 100
+      legalAlerts.push({
+        type: 'warning',
+        code: 'CONTRACT_HOURS_EXCEEDED',
+        message: `Dépassement de ${overtime}h sur le contrat (${employee.weeklyHours}h)`,
+      })
+    }
+    
+    setAlerts(legalAlerts)
   }, [shifts, employeeId, employee])
   
   if (!employee) return null
@@ -181,9 +193,16 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
     try {
       const weekStartStr = format(weekStart, 'yyyy-MM-dd')
       
-      // Filter only days with shifts
+      // Filter only days with actual work shifts (not rest days, not CP, not empty)
       const newShifts = Object.entries(shifts)
-        .filter(([_, shift]) => shift.startTime && shift.endTime)
+        .filter(([_, shift]) => {
+          // Exclure les vides
+          if (!shift.startTime || !shift.endTime) return false
+          // Exclure les repos (00:00-00:00)
+          if (shift.startTime === '00:00' && shift.endTime === '00:00') return false
+          // Garder les CP et les vrais horaires
+          return true
+        })
         .map(([date, shift]) => ({
           employeeId,
           date,
@@ -191,8 +210,11 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
           endTime: shift.endTime,
         }))
       
-      // Get other employees' shifts
-      const otherShifts = planning?.shifts?.filter(s => s.employeeId !== employeeId) || []
+      // Get other employees' shifts (only for current week dates)
+      const weekDateStrs = weekDays.map(d => format(d, 'yyyy-MM-dd'))
+      const otherShifts = planning?.shifts?.filter(s => 
+        s.employeeId !== employeeId && weekDateStrs.includes(s.date)
+      ) || []
       
       const response = await planningApi.createOrUpdate({
         weekStart: weekStartStr,
@@ -209,6 +231,16 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
     }
   }
   
+  const resetAllShifts = () => {
+    const emptyShifts: Record<string, DayShift> = {}
+    weekDays.forEach(date => {
+      const dateStr = format(date, 'yyyy-MM-dd')
+      emptyShifts[dateStr] = { startTime: '', endTime: '' }
+    })
+    setShifts(emptyShifts)
+    toast.success('Horaires réinitialisés')
+  }
+  
   // Bloquer le scroll du body quand la modal est ouverte
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -216,6 +248,19 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
       document.body.style.overflow = 'unset'
     }
   }, [])
+  
+  // Gestion touche Entrée pour sauvegarder
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+        e.preventDefault()
+        handleSave()
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isLoading, shifts])
   
   return (
     <div 
@@ -277,10 +322,16 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
             >
               {selectedDay ? 'CP (1 jour)' : 'CP (5 jours)'}
             </button>
+            <button
+              onClick={resetAllShifts}
+              className="px-4 py-2 bg-destructive/10 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/20 transition-colors"
+            >
+              Réinitialiser
+            </button>
             {selectedDay && (
               <button
                 onClick={() => setSelectedDay(null)}
-                className="px-4 py-2 bg-destructive/10 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/20 transition-colors"
+                className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-muted transition-colors"
               >
                 Annuler sélection
               </button>
@@ -416,9 +467,15 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                   } 
                   className="size-5 shrink-0 mt-0.5" 
                 />
-                <div>
+                <div className="flex-1">
                   <span className="font-medium">{alert.message}</span>
                   {alert.day && <span className="text-xs ml-1">({alert.day})</span>}
+                  {alert.suggestion && (
+                    <p className="text-xs mt-1 flex items-center gap-1 opacity-80">
+                      <Icon icon="solar:lightbulb-bold" className="size-3" />
+                      {alert.suggestion}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
