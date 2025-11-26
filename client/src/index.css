@@ -180,13 +180,14 @@ textarea {
   /* Format paysage */
   @page {
     size: landscape;
-    margin: 1cm;
+    margin: 0.5cm;
   }
 
   /* Masquer éléments UI inutiles */
   nav,
   footer,
   button,
+  header,
   .no-print {
     display: none !important;
   }
@@ -194,6 +195,9 @@ textarea {
   /* Container principal */
   body {
     background: white !important;
+    font-size: 11pt;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Planning page adjustments */
@@ -202,8 +206,17 @@ textarea {
   }
 
   .px-4 {
-    padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .mt-4 {
+    margin-top: 0 !important;
+  }
+
+  /* Print header styling */
+  .print\:block {
+    display: block !important;
   }
 
   /* Planning grid - full width */
@@ -212,16 +225,13 @@ textarea {
     min-width: 100% !important;
     page-break-inside: avoid;
     overflow: visible !important;
+    border-radius: 12px !important;
+    border: 1px solid #e5e7eb !important;
   }
 
   /* Overflow container visible */
   .overflow-x-auto {
     overflow: visible !important;
-  }
-
-  /* Event banner - keep visible */
-  .planning-grid > div:first-child {
-    display: flex !important;
   }
 
   /* Adjust grid to fit page */
@@ -244,14 +254,47 @@ textarea {
     box-shadow: none !important;
   }
 
-  /* Optimize text for print */
-  body {
-    font-size: 10pt;
+  /* Employee column */
+  .min-w-\[280px\] {
+    min-width: 200px !important;
+    width: 200px !important;
+  }
+
+  /* Shift cells */
+  .min-w-\[120px\] {
+    min-width: auto !important;
+    flex: 1 !important;
+  }
+
+  /* Keep shift background colors */
+  .bg-green-50 {
+    background-color: #f0fdf4 !important;
+  }
+
+  .bg-blue-50 {
+    background-color: #eff6ff !important;
+  }
+
+  .bg-orange-50 {
+    background-color: #fff7ed !important;
+  }
+
+  .bg-secondary {
+    background-color: #f1f5f9 !important;
+  }
+
+  /* Text colors */
+  .text-green-700 {
+    color: #15803d !important;
+  }
+
+  .text-blue-700 {
+    color: #1d4ed8 !important;
   }
 
   /* Compact spacing for print */
   .p-2 {
-    padding: 0.25rem !important;
+    padding: 0.375rem !important;
   }
 
   .p-4 {
@@ -269,11 +312,31 @@ textarea {
   .border-border,
   .border-r,
   .border-b {
-    border-color: #ddd !important;
+    border-color: #e5e7eb !important;
   }
 
-  /* Print-only elements */
-  .print\:block {
-    display: block !important;
+  /* Event banner print styling */
+  .planning-grid > div:first-child {
+    display: flex !important;
+    border-radius: 12px 12px 0 0 !important;
+  }
+
+  /* Hide coverage alerts in print */
+  .bg-amber-50 {
+    display: none !important;
+  }
+
+  /* Avatar circles */
+  .rounded-full {
+    border-radius: 9999px !important;
+  }
+
+  /* Rounded corners */
+  .rounded-xl {
+    border-radius: 12px !important;
+  }
+
+  .rounded-lg {
+    border-radius: 8px !important;
   }
 }

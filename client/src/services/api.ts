@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '../stores/authStore'
+import { StoreHours } from '../stores/settingsStore'
 
 // @ts-ignore - Vite import.meta.env
 const API_URL = import.meta.env.VITE_API_URL || '/api'
@@ -146,11 +147,7 @@ export const settingsApi = {
     return data
   },
   
-  updateStoreHours: async (storeHours: Record<string, {
-    isOpen: boolean
-    openTime: string
-    closeTime: string
-  }>) => {
+  updateStoreHours: async (storeHours: StoreHours) => {
     const { data } = await api.put('/settings/store-hours', storeHours)
     return data
   },

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { format, addDays, addWeeks, differenceInWeeks, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -12,6 +13,7 @@ import { checkLegalAlerts, hasAlertForDay, LegalAlert } from '../utils/legalAler
 import toast from 'react-hot-toast'
 
 export function Planning() {
+  const navigate = useNavigate()
   const { currentWeekStart, goToNextWeek, goToPreviousWeek, planning, setPlanning } = usePlanningStore()
   const { employees } = useEmployeesStore()
   const { events, weekNumberConfig, storeHours } = useSettingsStore()
@@ -87,7 +89,7 @@ export function Planning() {
         s.startTime !== 'CP'
       )
       
-      // Si aucun shift ce jour
+      // Si aucun shift ce jour - personne en ouverture ET en fermeture
       if (dayShifts.length === 0) {
         alerts.push({
           type: 'opening',
@@ -95,7 +97,13 @@ export function Planning() {
           dayName: dayNames[dayIndex],
           storeTime: dayConfig.openTime
         })
-        return // Pas besoin de checker la fermeture si personne du tout
+        alerts.push({
+          type: 'closing',
+          dayIndex,
+          dayName: dayNames[dayIndex],
+          storeTime: dayConfig.closeTime
+        })
+        return
       }
       
       // Vérifier ouverture : au moins un shift qui commence à l'heure d'ouverture
@@ -340,14 +348,17 @@ export function Planning() {
       {/* Header */}
       <header className="bg-card shadow-sm sticky top-0 z-20 no-print">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center gap-2 w-32">
+          <button 
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 w-32 hover:opacity-80 transition-opacity"
+          >
             <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
               <Icon icon="solar:calendar-mark-bold" className="size-5" />
             </div>
             <span className="text-lg font-bold text-primary font-heading tracking-tight hidden sm:block">
               Planify
             </span>
-          </div>
+          </button>
           
           {/* Week navigation */}
           <div className="flex items-center gap-3 flex-1 justify-center">
@@ -402,10 +413,10 @@ export function Planning() {
       </header>
       
       {/* Print-only header */}
-      <div className="hidden print:block text-center py-4">
-        <h1 className="text-2xl font-bold text-foreground mb-1">Planning - Semaine {weekNumber}</h1>
-        <p className="text-sm text-muted-foreground">
-          {format(currentWeekStart, 'd MMM', { locale: fr })} - {format(weekEnd, 'd MMM yyyy', { locale: fr })}
+      <div className="hidden print:block text-center py-6 mb-4">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Planning - Semaine {weekNumber}</h1>
+        <p className="text-base text-muted-foreground">
+          {format(currentWeekStart, 'd MMMM', { locale: fr })} - {format(weekEnd, 'd MMMM yyyy', { locale: fr })}
         </p>
       </div>
       
@@ -421,28 +432,46 @@ export function Planning() {
           </p>
         </div>
       ) : (
-        <div className="pb-24 px-4 mt-4">
+        <div className="pb-24 px-4 mt-4 print:pb-0 print:px-0 print:mt-0">
           {/* Alertes de couverture boutique */}
           {coverageAlerts.length > 0 && (
             <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3">
               <div className="flex items-start gap-2">
                 <Icon icon="solar:danger-triangle-bold" className="size-5 text-amber-500 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-amber-800 mb-1">Couverture horaire incomplète</p>
-                  <div className="flex flex-wrap gap-2">
-                    {coverageAlerts.map((alert, index) => (
-                      <span 
-                        key={index}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-medium"
-                      >
-                        <Icon 
-                          icon={alert.type === 'opening' ? 'solar:sunrise-bold' : 'solar:sunset-bold'} 
-                          className="size-3.5" 
-                        />
-                        {alert.dayName} : {alert.type === 'opening' ? 'ouverture' : 'fermeture'} ({alert.storeTime})
-                      </span>
-                    ))}
-                  </div>
+                  <p className="text-sm font-medium text-amber-800 mb-2">Couverture horaire incomplète</p>
+                  
+                  {/* Ligne ouvertures */}
+                  {coverageAlerts.filter(a => a.type === 'opening').length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <Icon icon="solar:sunrise-bold" className="size-4 text-amber-600" />
+                      <span className="text-xs font-medium text-amber-700">Ouverture :</span>
+                      {coverageAlerts.filter(a => a.type === 'opening').map((alert, index) => (
+                        <span 
+                          key={index}
+                          className="inline-flex items-center px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs"
+                        >
+                          {alert.dayName} ({alert.storeTime})
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Ligne fermetures */}
+                  {coverageAlerts.filter(a => a.type === 'closing').length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Icon icon="solar:sunset-bold" className="size-4 text-amber-600" />
+                      <span className="text-xs font-medium text-amber-700">Fermeture :</span>
+                      {coverageAlerts.filter(a => a.type === 'closing').map((alert, index) => (
+                        <span 
+                          key={index}
+                          className="inline-flex items-center px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs"
+                        >
+                          {alert.dayName} ({alert.storeTime})
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
