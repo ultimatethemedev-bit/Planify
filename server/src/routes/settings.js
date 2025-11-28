@@ -132,4 +132,63 @@ router.delete('/events/:id', async (req, res) => {
   }
 })
 
+// Get shift templates
+router.get('/shift-templates', async (req, res) => {
+  try {
+    const settings = await getOrCreateSettings(req.userId)
+    res.json(settings.shiftTemplates || [
+      { name: 'Matin', startTime: '10:00', endTime: '15:00' },
+      { name: 'Après-midi', startTime: '13:00', endTime: '21:00' },
+      { name: 'Journée', startTime: '10:00', endTime: '21:00' },
+    ])
+  } catch (error) {
+    console.error('Get shift templates error:', error)
+    res.status(500).json({ message: 'Erreur lors de la récupération des templates' })
+  }
+})
+
+// Update shift templates
+router.put('/shift-templates', async (req, res) => {
+  try {
+    const settings = await Settings.findOneAndUpdate(
+      { userId: req.userId },
+      { $set: { shiftTemplates: req.body } },
+      { new: true, upsert: true }
+    )
+    res.json(settings.shiftTemplates)
+  } catch (error) {
+    console.error('Update shift templates error:', error)
+    res.status(500).json({ message: 'Erreur lors de la mise à jour des templates' })
+  }
+})
+
+// Get week number config
+router.get('/week-number-config', async (req, res) => {
+  try {
+    const settings = await getOrCreateSettings(req.userId)
+    res.json(settings.weekNumberConfig || {
+      referenceDate: new Date().toISOString().split('T')[0],
+      referenceWeekNumber: 1,
+    })
+  } catch (error) {
+    console.error('Get week number config error:', error)
+    res.status(500).json({ message: 'Erreur lors de la récupération de la config' })
+  }
+})
+
+// Update week number config
+router.put('/week-number-config', async (req, res) => {
+  try {
+    const settings = await Settings.findOneAndUpdate(
+      { userId: req.userId },
+      { $set: { weekNumberConfig: req.body } },
+      { new: true, upsert: true }
+    )
+    res.json(settings.weekNumberConfig)
+  } catch (error) {
+    console.error('Update week number config error:', error)
+    res.status(500).json({ message: 'Erreur lors de la mise à jour de la config' })
+  }
+})
+
 export default router

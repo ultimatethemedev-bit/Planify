@@ -6,7 +6,7 @@ import { useEmployeesStore } from '../../stores/employeesStore'
 import { usePlanningStore, Shift } from '../../stores/planningStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { planningApi } from '../../services/api'
-import { getShiftDuration, minutesToHours } from '../../utils/planning'
+import { getShiftDuration, minutesToHours, calculateEmployeeCP } from '../../utils/planning'
 import toast from 'react-hot-toast'
 
 interface DayAlert {
@@ -42,6 +42,20 @@ export function DayShiftModal({ employeeId, date, weekStart, onClose }: DayShift
   
   const isRestDay = startTime === '00:00' && endTime === '00:00'
   const isCP = startTime === 'CP' && endTime === 'CP'
+  
+  // Calculer les CP disponibles
+  const cpData = useMemo(() => {
+    if (!employee) return null
+    const empShifts = planning?.shifts?.filter(s => s.employeeId === employeeId) || []
+    return calculateEmployeeCP(
+      {
+        cpBalance: employee.cpBalance || 0,
+        cpPerMonth: employee.cpPerMonth ?? 2.5,
+        cpStartDate: employee.cpStartDate || employee.createdAt,
+      },
+      empShifts
+    )
+  }, [employee, planning, employeeId])
   
   // Calculer les alertes pour ce jour
   const dayAlerts = useMemo((): DayAlert[] => {
@@ -250,14 +264,14 @@ export function DayShiftModal({ employeeId, date, weekStart, onClose }: DayShift
               <button
                 key={index}
                 onClick={() => applyTemplate(template)}
-                className="px-3 py-2 bg-secondary text-secondary-foreground rounded-full text-sm font-medium hover:bg-muted transition-colors"
+                className="px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors"
               >
                 {template.name} ({template.startTime}-{template.endTime})
               </button>
             ))}
             <button
               onClick={applyCP}
-              className="px-3 py-2 bg-orange-500 text-white rounded-full text-sm font-medium hover:bg-orange-600 transition-colors"
+              className="px-4 py-2 bg-orange-100 text-orange-600 rounded-lg text-sm font-medium hover:bg-orange-500 hover:text-white transition-colors"
             >
               CP
             </button>
@@ -308,8 +322,27 @@ export function DayShiftModal({ employeeId, date, weekStart, onClose }: DayShift
             </button>
           </div>
           
-          {isCP && (
-            <p className="text-xs text-orange-600 mt-2 text-center">Congé payé</p>
+          {isCP && cpData && (
+            <div className={`mt-3 p-3 rounded-lg ${
+              cpData.cpAvailable < 0 
+                ? 'bg-red-50 border border-red-200' 
+                : 'bg-orange-50 border border-orange-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className={`text-sm font-medium ${cpData.cpAvailable < 0 ? 'text-red-700' : 'text-orange-700'}`}>
+                  Congé payé
+                </span>
+                <span className={`text-sm font-bold ${cpData.cpAvailable < 0 ? 'text-red-700' : 'text-orange-700'}`}>
+                  Solde : {cpData.cpAvailable} CP
+                </span>
+              </div>
+              {cpData.cpAvailable < 0 && (
+                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <Icon icon="solar:danger-triangle-bold" className="size-3" />
+                  CP anticipés ({Math.abs(cpData.cpAvailable)} jours)
+                </p>
+              )}
+            </div>
           )}
           
           {/* Alertes */}

@@ -12,13 +12,15 @@ import { planningApi } from '../services/api'
 
 export function Dashboard() {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const { user, getCurrentStore } = useAuthStore()
   const { employees } = useEmployeesStore()
   const { events, weekNumberConfig } = useSettingsStore()
   const { setCurrentWeek } = usePlanningStore()
   
   const [weekPlanning, setWeekPlanning] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  
+  const currentStore = getCurrentStore()
   
   const today = new Date()
   const todayStr = format(today, 'yyyy-MM-dd')
@@ -105,6 +107,12 @@ export function Dashboard() {
         <p className="text-muted-foreground mt-1">
           Voici un aperçu de votre activité cette semaine.
         </p>
+        {currentStore && (
+          <div className="flex items-center gap-2 mt-3 px-3 py-2 bg-primary/10 rounded-lg w-fit">
+            <Icon icon="solar:shop-bold" className="size-4 text-primary" />
+            <span className="text-sm font-medium text-primary">{currentStore.name}</span>
+          </div>
+        )}
       </section>
       
       {/* Stats Cards */}

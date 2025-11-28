@@ -23,8 +23,18 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ message: 'weekStart parameter required' })
     }
     
+    // Vérifier que l'utilisateur a une boutique sélectionnée
+    if (!req.user.currentStoreId) {
+      return res.json({
+        weekStart,
+        weekEnd: getWeekEnd(weekStart),
+        shifts: [],
+      })
+    }
+    
     let planning = await Planning.findOne({
       userId: req.userId,
+      storeId: req.user.currentStoreId,
       weekStart,
     })
     
@@ -53,11 +63,16 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'weekStart required' })
     }
     
+    // Vérifier que l'utilisateur a une boutique sélectionnée
+    if (!req.user.currentStoreId) {
+      return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
+    }
+    
     const weekEnd = getWeekEnd(weekStart)
     
     // Upsert planning
     const planning = await Planning.findOneAndUpdate(
-      { userId: req.userId, weekStart },
+      { userId: req.userId, storeId: req.user.currentStoreId, weekStart },
       { 
         $set: { 
           weekEnd,
@@ -83,9 +98,15 @@ router.post('/duplicate', async (req, res) => {
       return res.status(400).json({ message: 'sourceWeekStart and targetWeekStart required' })
     }
     
+    // Vérifier que l'utilisateur a une boutique sélectionnée
+    if (!req.user.currentStoreId) {
+      return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
+    }
+    
     // Get source planning
     const sourcePlanning = await Planning.findOne({
       userId: req.userId,
+      storeId: req.user.currentStoreId,
       weekStart: sourceWeekStart,
     })
     
@@ -112,7 +133,7 @@ router.post('/duplicate', async (req, res) => {
     
     // Create or update target planning
     const targetPlanning = await Planning.findOneAndUpdate(
-      { userId: req.userId, weekStart: targetWeekStart },
+      { userId: req.userId, storeId: req.user.currentStoreId, weekStart: targetWeekStart },
       { 
         $set: { 
           weekEnd: getWeekEnd(targetWeekStart),
@@ -138,8 +159,14 @@ router.delete('/', async (req, res) => {
       return res.status(400).json({ message: 'weekStart parameter required' })
     }
     
+    // Vérifier que l'utilisateur a une boutique sélectionnée
+    if (!req.user.currentStoreId) {
+      return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
+    }
+    
     await Planning.findOneAndDelete({
       userId: req.userId,
+      storeId: req.user.currentStoreId,
       weekStart,
     })
     

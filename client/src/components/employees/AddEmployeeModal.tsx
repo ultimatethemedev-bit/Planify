@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { Icon } from '@iconify/react'
 import toast from 'react-hot-toast'
 import { useEmployeesStore, Employee } from '../../stores/employeesStore'
@@ -16,8 +16,10 @@ interface EmployeeForm {
   lastName: string
   email: string
   phone: string
-  contractType: 'CDI' | 'CDD' | 'Intérim' | 'Stage'
+  contractType: 'CDI' | 'CDD' | 'Alternant' | 'Stage'
   weeklyHours: number
+  cpBalance: number
+  cpPerMonth: number
 }
 
 export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
@@ -52,7 +54,20 @@ export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
     }
   }, [])
   
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<EmployeeForm>({
+  // Gestion touche Entrée pour sauvegarder
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+        e.preventDefault()
+        handleSubmit(onSubmit)()
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isLoading])
+  
+  const { register, handleSubmit, reset, control, setValue, formState: { errors } } = useForm<EmployeeForm>({
     defaultValues: {
       firstName: employee?.firstName || '',
       lastName: employee?.lastName || '',
@@ -60,8 +75,22 @@ export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
       phone: employee?.phone || '',
       contractType: employee?.contractType || 'CDI',
       weeklyHours: employee?.weeklyHours || 35,
+      cpBalance: employee?.cpBalance || 0,
+      cpPerMonth: employee?.cpPerMonth ?? 2.5,
     }
   })
+  
+  // Watch contract type to auto-set cpPerMonth
+  const contractType = useWatch({ control, name: 'contractType' })
+  
+  useEffect(() => {
+    // Auto-set cpPerMonth to 0 for Stage
+    if (contractType === 'Stage' && !isEditing) {
+      setValue('cpPerMonth', 0)
+    } else if (!isEditing && contractType !== 'Stage') {
+      setValue('cpPerMonth', 2.5)
+    }
+  }, [contractType, setValue, isEditing])
   
   // Reset form when employee changes
   useEffect(() => {
@@ -73,6 +102,8 @@ export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
         phone: employee.phone,
         contractType: employee.contractType,
         weeklyHours: employee.weeklyHours,
+        cpBalance: employee.cpBalance || 0,
+        cpPerMonth: employee.cpPerMonth ?? 2.5,
       })
       setSelectedColor(employee.color)
     }
@@ -232,7 +263,7 @@ export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
             >
               <option value="CDI">CDI</option>
               <option value="CDD">CDD</option>
-              <option value="Intérim">Intérim</option>
+              <option value="Alternant">Alternant</option>
               <option value="Stage">Stage</option>
             </select>
           </div>
@@ -252,6 +283,58 @@ export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
                 valueAsNumber: true
               })}
             />
+          </div>
+          
+          {/* CP Section */}
+          <div className="border-t border-border pt-5 mt-5">
+            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Icon icon="solar:calendar-bold" className="size-4 text-primary" />
+              Congés payés
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              {/* CP Balance */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Solde initial
+                  <span className="text-muted-foreground font-normal ml-1">(jours)</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min={-50}
+                  max={100}
+                  placeholder="0"
+                  className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground"
+                  {...register('cpBalance', { 
+                    valueAsNumber: true
+                  })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">CP déjà acquis à ce jour</p>
+              </div>
+              
+              {/* CP per month */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Acquisition
+                  <span className="text-muted-foreground font-normal ml-1">(/mois)</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  max={5}
+                  placeholder="2.5"
+                  className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground"
+                  {...register('cpPerMonth', { 
+                    valueAsNumber: true
+                  })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {contractType === 'Stage' ? 'Généralement 0 pour les stages' : 'Standard : 2.5 jours/mois'}
+                </p>
+              </div>
+            </div>
           </div>
           
           {/* Color picker */}

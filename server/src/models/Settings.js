@@ -52,6 +52,33 @@ const commercialEventSchema = new mongoose.Schema({
   },
 })
 
+const shiftTemplateSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  startTime: {
+    type: String,
+    required: true,
+  },
+  endTime: {
+    type: String,
+    required: true,
+  },
+}, { _id: false })
+
+const weekNumberConfigSchema = new mongoose.Schema({
+  referenceDate: {
+    type: String,
+    default: () => new Date().toISOString().split('T')[0],
+  },
+  referenceWeekNumber: {
+    type: Number,
+    default: 1,
+  },
+}, { _id: false })
+
 const settingsSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -64,6 +91,18 @@ const settingsSchema = new mongoose.Schema({
     default: () => ({}),
   },
   events: [commercialEventSchema],
+  shiftTemplates: {
+    type: [shiftTemplateSchema],
+    default: [
+      { name: 'Matin', startTime: '10:00', endTime: '15:00' },
+      { name: 'Après-midi', startTime: '13:00', endTime: '21:00' },
+      { name: 'Journée', startTime: '10:00', endTime: '21:00' },
+    ],
+  },
+  weekNumberConfig: {
+    type: weekNumberConfigSchema,
+    default: () => ({}),
+  },
 }, {
   timestamps: true,
 })

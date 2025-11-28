@@ -9,7 +9,8 @@ import { authApi } from '../services/api'
 interface RegisterForm {
   firstName: string
   lastName: string
-  companyName: string
+  store1: string
+  store2: string
   email: string
   password: string
   confirmPassword: string
@@ -30,7 +31,8 @@ export function Register() {
       const response = await authApi.register({
         firstName: data.firstName,
         lastName: data.lastName,
-        companyName: data.companyName,
+        store1: data.store1,
+        store2: data.store2 || '',
         email: data.email,
         password: data.password,
       })
@@ -104,7 +106,7 @@ export function Register() {
           
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Nom de la boutique
+              Boutique 1 <span className="text-destructive">*</span>
             </label>
             <div className="relative">
               <Icon 
@@ -113,16 +115,34 @@ export function Register() {
               />
               <input
                 type="text"
-                placeholder="Ma Boutique"
+                placeholder="Parly 2"
                 className={`w-full pl-12 pr-4 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground ${
-                  errors.companyName ? 'border-destructive' : 'border-border'
+                  errors.store1 ? 'border-destructive' : 'border-border'
                 }`}
-                {...register('companyName', { required: 'Nom de boutique requis' })}
+                {...register('store1', { required: 'Nom de la boutique 1 requis' })}
               />
             </div>
-            {errors.companyName && (
-              <p className="text-destructive text-sm mt-1">{errors.companyName.message}</p>
+            {errors.store1 && (
+              <p className="text-destructive text-sm mt-1">{errors.store1.message}</p>
             )}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Boutique 2 <span className="text-muted-foreground text-xs">(optionnel)</span>
+            </label>
+            <div className="relative">
+              <Icon 
+                icon="solar:shop-bold" 
+                className="size-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" 
+              />
+              <input
+                type="text"
+                placeholder="Vélizy 2"
+                className="w-full pl-12 pr-4 py-3 bg-input border border-border rounded-xl text-foreground placeholder:text-muted-foreground"
+                {...register('store2')}
+              />
+            </div>
           </div>
           
           <div>

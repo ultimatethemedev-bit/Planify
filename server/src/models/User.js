@@ -1,6 +1,16 @@
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
 
+const storeSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+}, {
+  timestamps: true,
+})
+
 const userSchema = new mongoose.Schema({
   email: {
     type: String,
@@ -24,10 +34,16 @@ const userSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  // Anciennes données (pour compatibilité)
   companyName: {
     type: String,
-    required: true,
     trim: true,
+  },
+  // Nouvelles données multi-boutiques
+  stores: [storeSchema],
+  currentStoreId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
   },
 }, {
   timestamps: true,

@@ -50,7 +50,8 @@ export const authApi = {
     password: string
     firstName: string
     lastName: string
-    companyName: string
+    store1: string
+    store2?: string
   }) => {
     const { data } = await api.post('/auth/register', userData)
     return data
@@ -58,6 +59,11 @@ export const authApi = {
   
   me: async () => {
     const { data } = await api.get('/auth/me')
+    return data
+  },
+  
+  switchStore: async (storeId: string) => {
+    const { data } = await api.put('/auth/switch-store', { storeId })
     return data
   },
 }

@@ -2,6 +2,10 @@ import { useState, useRef, useEffect } from 'react'
 import { Icon } from '@iconify/react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
+import { useEmployeesStore } from '../../stores/employeesStore'
+import { usePlanningStore } from '../../stores/planningStore'
+import { authApi } from '../../services/api'
+import toast from 'react-hot-toast'
 
 interface HeaderProps {
   showAvatar?: boolean
@@ -9,16 +13,22 @@ interface HeaderProps {
 }
 
 export function Header({ showAvatar = true, rightContent }: HeaderProps) {
-  const { user, logout } = useAuthStore()
+  const { user, logout, setCurrentStore, getCurrentStore } = useAuthStore()
+  const { setEmployees } = useEmployeesStore()
+  const { setPlanning } = usePlanningStore()
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
+  const [showStoreSubmenu, setShowStoreSubmenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  
+  const currentStore = getCurrentStore()
   
   // Fermer le menu si on clique en dehors
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowMenu(false)
+        setShowStoreSubmenu(false)
       }
     }
     
@@ -29,6 +39,24 @@ export function Header({ showAvatar = true, rightContent }: HeaderProps) {
   const handleLogout = () => {
     logout()
     navigate('/login')
+  }
+  
+  const handleSwitchStore = async (storeId: string) => {
+    try {
+      await authApi.switchStore(storeId)
+      setCurrentStore(storeId)
+      // Reset les données pour forcer le rechargement
+      setEmployees([])
+      setPlanning(null)
+      toast.success('Boutique changée')
+      setShowMenu(false)
+      setShowStoreSubmenu(false)
+      // Rediriger vers le dashboard pour rafraîchir
+      navigate('/')
+      window.location.reload()
+    } catch (error) {
+      toast.error('Erreur lors du changement de boutique')
+    }
   }
   
   return (
@@ -66,7 +94,7 @@ export function Header({ showAvatar = true, rightContent }: HeaderProps) {
           
           {/* Menu déroulant */}
           {showMenu && (
-            <div className="absolute right-0 top-12 w-56 bg-card rounded-xl shadow-lg border border-border py-2 animate-fade-in z-50">
+            <div className="absolute right-0 top-12 w-64 bg-card rounded-xl shadow-lg border border-border py-2 animate-fade-in z-50">
               {/* Info utilisateur */}
               <div className="px-4 py-3 border-b border-border">
                 <p className="font-semibold text-foreground text-sm">
@@ -75,10 +103,59 @@ export function Header({ showAvatar = true, rightContent }: HeaderProps) {
                 <p className="text-xs text-muted-foreground truncate">
                   {user?.email}
                 </p>
+                {currentStore && (
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-primary">
+                    <Icon icon="solar:shop-bold" className="size-3.5" />
+                    <span className="font-medium">{currentStore.name}</span>
+                  </div>
+                )}
               </div>
               
               {/* Options du menu */}
               <div className="py-1">
+                {/* Switch boutique */}
+                {user?.stores && user.stores.length > 1 && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowStoreSubmenu(!showStoreSubmenu)}
+                      className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon icon="solar:shop-2-bold" className="size-5 text-muted-foreground" />
+                        Changer de boutique
+                      </div>
+                      <Icon 
+                        icon="solar:alt-arrow-right-linear" 
+                        className={`size-4 text-muted-foreground transition-transform ${showStoreSubmenu ? 'rotate-90' : ''}`} 
+                      />
+                    </button>
+                    
+                    {/* Sous-menu boutiques */}
+                    {showStoreSubmenu && (
+                      <div className="bg-secondary/50 py-1">
+                        {user.stores.map((store) => (
+                          <button
+                            key={store._id}
+                            onClick={() => handleSwitchStore(store._id)}
+                            className={`w-full flex items-center gap-3 px-6 py-2 text-sm transition-colors ${
+                              store._id === user.currentStoreId 
+                                ? 'text-primary bg-primary/10' 
+                                : 'text-foreground hover:bg-secondary'
+                            }`}
+                          >
+                            {store._id === user.currentStoreId && (
+                              <Icon icon="solar:check-circle-bold" className="size-4" />
+                            )}
+                            <span className={store._id === user.currentStoreId ? 'font-medium' : ''}>
+                              {store.name}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <button
                   onClick={() => {
                     navigate('/settings')

@@ -6,10 +6,14 @@ export interface Employee {
   lastName: string
   email: string
   phone: string
-  contractType: 'CDI' | 'CDD' | 'Intérim' | 'Stage'
+  contractType: 'CDI' | 'CDD' | 'Alternant' | 'Stage'
   weeklyHours: number
   color: string
   avatar?: string
+  // Gestion des CP
+  cpBalance: number
+  cpPerMonth: number
+  cpStartDate: string
   createdAt: string
   updatedAt: string
 }

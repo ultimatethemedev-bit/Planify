@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Icon } from '@iconify/react'
 import toast from 'react-hot-toast'
 import { Header } from '../components/layout/Header'
 import { AddEmployeeModal } from '../components/employees/AddEmployeeModal'
 import { useEmployeesStore, Employee } from '../stores/employeesStore'
+import { usePlanningStore } from '../stores/planningStore'
 import { employeesApi } from '../services/api'
-import { EMPLOYEE_COLORS } from '../utils/planning'
+import { EMPLOYEE_COLORS, calculateEmployeeCP } from '../utils/planning'
 
 export function Employees() {
   const { employees, setEmployees, deleteEmployee, setLoading, isLoading } = useEmployeesStore()
+  const { planning } = usePlanningStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
@@ -35,6 +37,23 @@ export function Employees() {
     const query = searchQuery.toLowerCase()
     return fullName.includes(query) || emp.email.toLowerCase().includes(query)
   })
+  
+  // Calculate CP for each employee
+  const employeeCPs = useMemo(() => {
+    const cpMap: Record<string, ReturnType<typeof calculateEmployeeCP>> = {}
+    employees.forEach(emp => {
+      const empShifts = planning?.shifts?.filter(s => s.employeeId === emp._id) || []
+      cpMap[emp._id] = calculateEmployeeCP(
+        {
+          cpBalance: emp.cpBalance || 0,
+          cpPerMonth: emp.cpPerMonth ?? 2.5,
+          cpStartDate: emp.cpStartDate || emp.createdAt,
+        },
+        empShifts
+      )
+    })
+    return cpMap
+  }, [employees, planning])
   
   const handleDelete = async (employee: Employee) => {
     try {
@@ -126,6 +145,7 @@ export function Employees() {
           <div className="space-y-4">
             {filteredEmployees.map((employee) => {
               const badgeColors = getContractBadgeColor(employee.color)
+              const cpData = employeeCPs[employee._id]
               return (
                 <div 
                   key={employee._id} 
@@ -144,10 +164,27 @@ export function Employees() {
                     <p className="text-sm text-muted-foreground mb-1">{employee.email}</p>
                     <p className="text-sm text-muted-foreground mb-4">{employee.phone}</p>
                     
-                    <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-center gap-3 mb-4 flex-wrap justify-center">
                       <span className={`px-3 py-1 ${badgeColors.bg} ${badgeColors.text} rounded-full text-xs font-medium`}>
                         {employee.contractType} {employee.weeklyHours}h
                       </span>
+                      
+                      {/* Badge CP */}
+                      {cpData && (
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+                          cpData.cpAvailable < 0 
+                            ? 'bg-red-100 text-red-700' 
+                            : cpData.cpAvailable === 0
+                            ? 'bg-gray-100 text-gray-600'
+                            : 'bg-green-100 text-green-700'
+                        }`}>
+                          <Icon icon="solar:calendar-bold" className="size-3" />
+                          {cpData.cpAvailable >= 0 ? cpData.cpAvailable : cpData.cpAvailable} CP
+                          {cpData.cpAvailable < 0 && (
+                            <span className="text-[10px] opacity-75">(anticipés)</span>
+                          )}
+                        </span>
+                      )}
                     </div>
                     
                     <div className="flex items-center gap-2 mb-5">

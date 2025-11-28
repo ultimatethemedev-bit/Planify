@@ -106,33 +106,21 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
   }
   
   const applyTemplate = (template: { name: string, startTime: string, endTime: string }) => {
-    if (selectedDay) {
-      // Appliquer au jour sélectionné uniquement
-      setShifts(prev => ({
-        ...prev,
-        [selectedDay]: {
-          startTime: template.startTime,
-          endTime: template.endTime,
-        }
-      }))
-      toast.success(`${template.name} appliqué à ${DAYS_FR[weekDays.findIndex(d => format(d, 'yyyy-MM-dd') === selectedDay)]}`)
-      setSelectedDay(null)
-    } else {
-      // Appliquer à tous les jours vides
-      setShifts(prev => {
-        const updated = { ...prev }
-        Object.keys(updated).forEach(dateStr => {
-          if (!updated[dateStr].startTime && !updated[dateStr].endTime) {
-            updated[dateStr] = {
-              startTime: template.startTime,
-              endTime: template.endTime,
-            }
-          }
-        })
-        return updated
-      })
-      toast.success(`Template "${template.name}" appliqué aux jours vides`)
+    if (!selectedDay) {
+      toast('Cliquez d\'abord sur un jour', { icon: '👆' })
+      return
     }
+    
+    // Appliquer au jour sélectionné uniquement
+    setShifts(prev => ({
+      ...prev,
+      [selectedDay]: {
+        startTime: template.startTime,
+        endTime: template.endTime,
+      }
+    }))
+    toast.success(`${template.name} appliqué à ${DAYS_FR[weekDays.findIndex(d => format(d, 'yyyy-MM-dd') === selectedDay)]}`)
+    setSelectedDay(null)
   }
   
   const applyCP = () => {
@@ -193,14 +181,12 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
     try {
       const weekStartStr = format(weekStart, 'yyyy-MM-dd')
       
-      // Filter only days with actual work shifts (not rest days, not CP, not empty)
+      // Filter days with shifts (work, rest 00:00-00:00, or CP)
       const newShifts = Object.entries(shifts)
         .filter(([_, shift]) => {
-          // Exclure les vides
+          // Exclure seulement les vides (pas d'horaires du tout)
           if (!shift.startTime || !shift.endTime) return false
-          // Exclure les repos (00:00-00:00)
-          if (shift.startTime === '00:00' && shift.endTime === '00:00') return false
-          // Garder les CP et les vrais horaires
+          // Garder les repos (00:00-00:00), les CP et les vrais horaires
           return true
         })
         .map(([date, shift]) => ({
@@ -307,18 +293,14 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
               <button
                 key={index}
                 onClick={() => applyTemplate(template)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  selectedDay 
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
-                    : 'bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground'
-                }`}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground"
               >
                 {template.name} ({template.startTime}-{template.endTime})
               </button>
             ))}
             <button
               onClick={applyCP}
-              className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors"
+              className="px-4 py-2 bg-orange-100 text-orange-600 rounded-lg text-sm font-medium hover:bg-orange-500 hover:text-white transition-colors"
             >
               {selectedDay ? 'CP (1 jour)' : 'CP (5 jours)'}
             </button>

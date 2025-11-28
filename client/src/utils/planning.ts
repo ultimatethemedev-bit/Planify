@@ -271,3 +271,47 @@ export const SHIFT_TEMPLATES = [
   { name: 'Après-midi', startTime: '14:00', endTime: '21:00' },
   { name: 'Journée', startTime: '10:00', endTime: '21:00' },
 ]
+
+// Calculate available CP for an employee
+export interface CPCalculation {
+  cpInitial: number       // Solde initial
+  cpAcquired: number      // CP acquis depuis la date de début
+  cpUsed: number          // CP posés sur le planning
+  cpAvailable: number     // CP disponibles (peut être négatif = anticipés)
+  monthsWorked: number    // Nombre de mois travaillés
+}
+
+export const calculateEmployeeCP = (
+  employee: {
+    cpBalance: number
+    cpPerMonth: number
+    cpStartDate: string
+  },
+  shifts: Shift[]
+): CPCalculation => {
+  // Calculer le nombre de mois depuis cpStartDate
+  const startDate = new Date(employee.cpStartDate)
+  const now = new Date()
+  
+  // Différence en mois (arrondi à l'inférieur pour ne compter que les mois complets)
+  const monthsDiff = (now.getFullYear() - startDate.getFullYear()) * 12 + 
+                     (now.getMonth() - startDate.getMonth())
+  const monthsWorked = Math.max(0, monthsDiff)
+  
+  // CP acquis depuis le début
+  const cpAcquired = monthsWorked * (employee.cpPerMonth || 0)
+  
+  // Compter les CP utilisés (shifts avec startTime === 'CP')
+  const cpUsed = shifts.filter(s => s.startTime === 'CP' && s.endTime === 'CP').length
+  
+  // CP disponibles
+  const cpAvailable = (employee.cpBalance || 0) + cpAcquired - cpUsed
+  
+  return {
+    cpInitial: employee.cpBalance || 0,
+    cpAcquired: Math.round(cpAcquired * 10) / 10, // Arrondir à 1 décimale
+    cpUsed,
+    cpAvailable: Math.round(cpAvailable * 10) / 10,
+    monthsWorked,
+  }
+}

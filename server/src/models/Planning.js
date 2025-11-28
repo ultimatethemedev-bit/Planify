@@ -26,6 +26,10 @@ const planningSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  storeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+  },
   weekStart: {
     type: String, // Format: YYYY-MM-DD (Monday)
     required: true,
@@ -39,7 +43,7 @@ const planningSchema = new mongoose.Schema({
   timestamps: true,
 })
 
-// Compound index for unique planning per user per week
-planningSchema.index({ userId: 1, weekStart: 1 }, { unique: true })
+// Compound index for unique planning per user per store per week
+planningSchema.index({ userId: 1, storeId: 1, weekStart: 1 }, { unique: true })
 
 export default mongoose.model('Planning', planningSchema)

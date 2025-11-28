@@ -20,13 +20,20 @@ const handleValidation = (req, res, next) => {
   next()
 }
 
-// Get all employees
+// Get all employees (filtered by current store)
 router.get('/', async (req, res) => {
   try {
-    const employees = await Employee.find({ 
+    const query = { 
       userId: req.userId,
       isActive: true 
-    }).sort({ firstName: 1 })
+    }
+    
+    // Filtrer par boutique si l'utilisateur a un currentStoreId
+    if (req.user.currentStoreId) {
+      query.storeId = req.user.currentStoreId
+    }
+    
+    const employees = await Employee.find(query).sort({ firstName: 1 })
     
     res.json(employees)
   } catch (error) {
@@ -66,9 +73,15 @@ router.post('/', [
   handleValidation,
 ], async (req, res) => {
   try {
+    // Vérifier que l'utilisateur a une boutique sélectionnée
+    if (!req.user.currentStoreId) {
+      return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
+    }
+    
     const employee = new Employee({
       ...req.body,
       userId: req.userId,
+      storeId: req.user.currentStoreId,
     })
     await employee.save()
     
