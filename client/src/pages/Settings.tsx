@@ -149,8 +149,6 @@ export function Settings() {
   }
   
   const handleDeleteEvent = async (event: CommercialEvent) => {
-    if (!confirm(`Supprimer "${event.name}" ?`)) return
-    
     try {
       await settingsApi.deleteEvent(event._id)
       deleteEvent(event._id)
