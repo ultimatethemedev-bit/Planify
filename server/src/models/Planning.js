@@ -11,11 +11,11 @@ const shiftSchema = new mongoose.Schema({
     required: true,
   },
   startTime: {
-    type: String, // Format: HH:mm
+    type: String, // Format: HH:mm ou 'CP' ou 'AM'
     required: true,
   },
   endTime: {
-    type: String, // Format: HH:mm
+    type: String, // Format: HH:mm ou 'CP' ou 'AM'
     required: true,
   },
 }, { _id: true })
@@ -39,6 +39,15 @@ const planningSchema = new mongoose.Schema({
     required: true,
   },
   shifts: [shiftSchema],
+  // Validation du planning
+  isValidated: {
+    type: Boolean,
+    default: false,
+  },
+  validatedAt: {
+    type: Date,
+    default: null,
+  },
 }, {
   timestamps: true,
 })

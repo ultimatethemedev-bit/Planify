@@ -4,8 +4,8 @@ export interface Shift {
   _id?: string
   employeeId: string
   date: string // ISO date string
-  startTime: string // HH:mm
-  endTime: string // HH:mm
+  startTime: string // HH:mm ou 'CP' ou 'AM'
+  endTime: string // HH:mm ou 'CP' ou 'AM'
 }
 
 export interface Planning {
@@ -13,13 +13,47 @@ export interface Planning {
   weekStart: string // ISO date string (Monday)
   weekEnd: string // ISO date string (Sunday)
   shifts: Shift[]
+  isValidated: boolean
+  validatedAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+// Timesheet types
+export interface TimesheetDay {
+  date: string
+  type: 'work' | 'rest' | 'cp' | 'am'
+  plannedStart: string | null
+  plannedEnd: string | null
+  plannedMinutes: number
+  actualStart: string | null
+  actualEnd: string | null
+  actualMinutes: number
+  deltaMinutes: number
+  note: string
+  modifications: Array<{
+    changedAt: string
+    field: string
+    from: string
+    to: string
+  }>
+}
+
+export interface Timesheet {
+  _id: string
+  employeeId: string
+  weekStart: string
+  weekEnd: string
+  days: TimesheetDay[]
+  totalPlannedMinutes: number
+  totalActualMinutes: number
+  totalDeltaMinutes: number
 }
 
 interface PlanningState {
   currentWeekStart: Date
   planning: Planning | null
+  timesheets: Timesheet[]
   isLoading: boolean
   error: string | null
   setCurrentWeek: (date: Date) => void
@@ -27,6 +61,8 @@ interface PlanningState {
   goToPreviousWeek: () => void
   goToToday: () => void
   setPlanning: (planning: Planning | null) => void
+  setTimesheets: (timesheets: Timesheet[]) => void
+  updateTimesheet: (employeeId: string, timesheet: Timesheet) => void
   addShift: (shift: Shift) => void
   updateShift: (shiftId: string, data: Partial<Shift>) => void
   deleteShift: (shiftId: string) => void
@@ -47,6 +83,7 @@ const getMonday = (date: Date): Date => {
 export const usePlanningStore = create<PlanningState>((set) => ({
   currentWeekStart: getMonday(new Date()),
   planning: null,
+  timesheets: [],
   isLoading: false,
   error: null,
   
@@ -67,6 +104,14 @@ export const usePlanningStore = create<PlanningState>((set) => ({
   goToToday: () => set({ currentWeekStart: getMonday(new Date()) }),
   
   setPlanning: (planning) => set({ planning }),
+  
+  setTimesheets: (timesheets) => set({ timesheets }),
+  
+  updateTimesheet: (employeeId, timesheet) => set((state) => ({
+    timesheets: state.timesheets.map(ts => 
+      ts.employeeId === employeeId ? timesheet : ts
+    )
+  })),
   
   addShift: (shift) => set((state) => {
     if (!state.planning) return state

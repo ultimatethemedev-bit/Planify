@@ -10,11 +10,12 @@ import { ShiftHoursModal } from '../components/planning/ShiftHoursModal'
 import { DayShiftModal } from '../components/planning/DayShiftModal'
 import { calculateWeeklyHours, getWeekDays, getColorClasses, DAYS_SHORT_FR } from '../utils/planning'
 import { checkLegalAlerts, hasAlertForDay, LegalAlert } from '../utils/legalAlerts'
+import { timesheetsApi } from '../services/api'
 import toast from 'react-hot-toast'
 
 export function Planning() {
   const navigate = useNavigate()
-  const { currentWeekStart, goToNextWeek, goToPreviousWeek, planning, setPlanning } = usePlanningStore()
+  const { currentWeekStart, goToNextWeek, goToPreviousWeek, planning, setPlanning, setTimesheets, timesheets } = usePlanningStore()
   const { employees } = useEmployeesStore()
   const { events, weekNumberConfig, storeHours } = useSettingsStore()
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null)
@@ -22,6 +23,7 @@ export function Planning() {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [isDuplicating, setIsDuplicating] = useState(false)
   const [isLoadingPlanning, setIsLoadingPlanning] = useState(false)
+  const [isValidating, setIsValidating] = useState(false)
   
   const weekDays = getWeekDays(currentWeekStart)
   const weekEnd = addDays(currentWeekStart, 6)
@@ -35,16 +37,47 @@ export function Planning() {
         const { planningApi } = await import('../services/api')
         const data = await planningApi.getByWeek(weekStartStr)
         setPlanning(data)
+        
+        // Si le planning est validé, charger les timesheets
+        if (data?.isValidated) {
+          const timesheetsData = await timesheetsApi.getByWeek(weekStartStr)
+          setTimesheets(timesheetsData)
+        } else {
+          setTimesheets([])
+        }
       } catch (error) {
         console.error('Erreur chargement planning:', error)
         setPlanning(null)
+        setTimesheets([])
       } finally {
         setIsLoadingPlanning(false)
       }
     }
     
     fetchPlanning()
-  }, [currentWeekStart, setPlanning])
+  }, [currentWeekStart, setPlanning, setTimesheets])
+  
+  // Fonction pour valider le planning
+  const handleValidatePlanning = async () => {
+    if (!planning || planning.shifts.length === 0) {
+      toast.error('Ajoutez des horaires avant de valider')
+      return
+    }
+    
+    try {
+      setIsValidating(true)
+      const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd')
+      const result = await timesheetsApi.validatePlanning(weekStartStr)
+      
+      setPlanning(result.planning)
+      setTimesheets(result.timesheets)
+      toast.success('Planning validé ! Les heures sont maintenant trackées.')
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Erreur lors de la validation')
+    } finally {
+      setIsValidating(false)
+    }
+  }
   
   // Calculer les alertes légales
   const legalAlerts = useMemo(() => {
@@ -387,6 +420,27 @@ export function Planning() {
           
           {/* Actions */}
           <div className="flex items-center gap-2 justify-end">
+            {/* Bouton Valider le planning */}
+            {planning?.isValidated ? (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
+                <Icon icon="solar:check-circle-bold" className="size-4" />
+                Validé
+              </div>
+            ) : (
+              <button 
+                onClick={handleValidatePlanning}
+                disabled={isValidating || !planning?.shifts?.length}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Valider le planning"
+              >
+                {isValidating ? (
+                  <Icon icon="solar:spinner-bold" className="size-4 animate-spin" />
+                ) : (
+                  <Icon icon="solar:check-circle-bold" className="size-4" />
+                )}
+                Valider
+              </button>
+            )}
             <button 
               onClick={() => setShowDuplicateModal(true)}
               className="size-9 flex items-center justify-center rounded-lg bg-secondary text-muted-foreground hover:bg-muted hover:text-foreground transition-colors hidden sm:flex"

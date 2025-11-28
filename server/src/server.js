@@ -12,6 +12,7 @@ import authRoutes from './routes/auth.js'
 import employeesRoutes from './routes/employees.js'
 import planningRoutes from './routes/planning.js'
 import settingsRoutes from './routes/settings.js'
+import timesheetsRoutes from './routes/timesheets.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -36,6 +37,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/employees', employeesRoutes)
 app.use('/api/planning', planningRoutes)
 app.use('/api/settings', settingsRoutes)
+app.use('/api/timesheets', timesheetsRoutes)
 
 // Error handler
 app.use((err, req, res, next) => {

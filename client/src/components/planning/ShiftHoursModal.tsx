@@ -155,6 +155,38 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
     }
   }
   
+  const applyAM = () => {
+    if (selectedDay) {
+      // Appliquer AM au jour sélectionné uniquement
+      setShifts(prev => ({
+        ...prev,
+        [selectedDay]: {
+          startTime: 'AM',
+          endTime: 'AM',
+        }
+      }))
+      toast.success(`AM appliqué à ${DAYS_FR[weekDays.findIndex(d => format(d, 'yyyy-MM-dd') === selectedDay)]}`)
+      setSelectedDay(null)
+    } else {
+      // Appliquer AM du lundi au vendredi (5 jours)
+      setShifts(prev => {
+        const updated = { ...prev }
+        weekDays.forEach((date, index) => {
+          // Index 0-4 = Lundi à Vendredi
+          if (index >= 0 && index <= 4) {
+            const dateStr = format(date, 'yyyy-MM-dd')
+            updated[dateStr] = {
+              startTime: 'AM',
+              endTime: 'AM',
+            }
+          }
+        })
+        return updated
+      })
+      toast.success('AM appliqué du lundi au vendredi (5 jours)')
+    }
+  }
+  
   const copyMondayToAll = () => {
     const mondayDateStr = format(weekDays[0], 'yyyy-MM-dd')
     const mondayShift = shifts[mondayDateStr]
@@ -305,6 +337,12 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
               {selectedDay ? 'CP (1 jour)' : 'CP (5 jours)'}
             </button>
             <button
+              onClick={applyAM}
+              className="px-4 py-2 bg-red-100 text-red-600 rounded-lg text-sm font-medium hover:bg-red-500 hover:text-white transition-colors"
+            >
+              {selectedDay ? 'AM (1 jour)' : 'AM (5 jours)'}
+            </button>
+            <button
               onClick={resetAllShifts}
               className="px-4 py-2 bg-destructive/10 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/20 transition-colors"
             >
@@ -329,6 +367,7 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
             const isSunday = index === 6
             const isRestDay = dayShift.startTime === '00:00' && dayShift.endTime === '00:00'
             const isCP = dayShift.startTime === 'CP' && dayShift.endTime === 'CP'
+            const isAM = dayShift.startTime === 'AM' && dayShift.endTime === 'AM'
             const isSelected = selectedDay === dateStr
             
             return (
@@ -341,7 +380,9 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                       ? 'border-gray-300 bg-gray-50 hover:bg-gray-100'
                       : isCP
                         ? 'border-orange-300 bg-orange-50 hover:bg-orange-100'
-                        : 'border-border hover:bg-accent/30'
+                        : isAM
+                          ? 'border-red-300 bg-red-50 hover:bg-red-100'
+                          : 'border-border hover:bg-accent/30'
                 }`}
               >
                 <div className="flex items-center gap-4">
@@ -360,24 +401,27 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
                     {isCP && (
                       <span className="block text-[10px] text-orange-700 font-normal">Congé payé</span>
                     )}
+                    {isAM && (
+                      <span className="block text-[10px] text-red-700 font-normal">Arrêt maladie</span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <input
                       type="time"
-                      value={isCP ? '' : dayShift.startTime}
+                      value={(isCP || isAM) ? '' : dayShift.startTime}
                       onChange={(e) => handleTimeChange(dateStr, 'startTime', e.target.value)}
-                      disabled={isCP}
-                      className={`bg-input border border-border rounded-lg px-2 py-2 text-sm w-24 ${(isRestDay || isCP) ? 'opacity-50' : ''}`}
-                      placeholder={isCP ? 'CP' : ''}
+                      disabled={isCP || isAM}
+                      className={`bg-input border border-border rounded-lg px-2 py-2 text-sm w-24 ${(isRestDay || isCP || isAM) ? 'opacity-50' : ''}`}
+                      placeholder={isCP ? 'CP' : isAM ? 'AM' : ''}
                     />
                     <span className="text-muted-foreground text-sm">-</span>
                     <input
                       type="time"
-                      value={isCP ? '' : dayShift.endTime}
+                      value={(isCP || isAM) ? '' : dayShift.endTime}
                       onChange={(e) => handleTimeChange(dateStr, 'endTime', e.target.value)}
-                      disabled={isCP}
-                      className={`bg-input border border-border rounded-lg px-2 py-2 text-sm w-24 ${(isRestDay || isCP) ? 'opacity-50' : ''}`}
-                      placeholder={isCP ? 'CP' : ''}
+                      disabled={isCP || isAM}
+                      className={`bg-input border border-border rounded-lg px-2 py-2 text-sm w-24 ${(isRestDay || isCP || isAM) ? 'opacity-50' : ''}`}
+                      placeholder={isCP ? 'CP' : isAM ? 'AM' : ''}
                     />
                     <button
                       onClick={() => {

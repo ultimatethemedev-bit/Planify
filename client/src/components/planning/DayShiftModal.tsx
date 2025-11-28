@@ -42,6 +42,7 @@ export function DayShiftModal({ employeeId, date, weekStart, onClose }: DayShift
   
   const isRestDay = startTime === '00:00' && endTime === '00:00'
   const isCP = startTime === 'CP' && endTime === 'CP'
+  const isAM = startTime === 'AM' && endTime === 'AM'
   
   // Calculer les CP disponibles
   const cpData = useMemo(() => {
@@ -61,8 +62,8 @@ export function DayShiftModal({ employeeId, date, weekStart, onClose }: DayShift
   const dayAlerts = useMemo((): DayAlert[] => {
     const alerts: DayAlert[] = []
     
-    // Si repos ou CP, pas d'alertes
-    if (isRestDay || isCP || !startTime || !endTime || !startTime.includes(':') || !endTime.includes(':')) {
+    // Si repos, CP ou AM, pas d'alertes
+    if (isRestDay || isCP || isAM || !startTime || !endTime || !startTime.includes(':') || !endTime.includes(':')) {
       return alerts
     }
     
@@ -161,6 +162,11 @@ export function DayShiftModal({ employeeId, date, weekStart, onClose }: DayShift
   const applyCP = () => {
     setStartTime('CP')
     setEndTime('CP')
+  }
+  
+  const applyAM = () => {
+    setStartTime('AM')
+    setEndTime('AM')
   }
   
   const applyRepos = () => {
@@ -271,9 +277,23 @@ export function DayShiftModal({ employeeId, date, weekStart, onClose }: DayShift
             ))}
             <button
               onClick={applyCP}
-              className="px-4 py-2 bg-orange-100 text-orange-600 rounded-lg text-sm font-medium hover:bg-orange-500 hover:text-white transition-colors"
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isCP 
+                  ? 'bg-orange-500 text-white' 
+                  : 'bg-orange-100 text-orange-600 hover:bg-orange-500 hover:text-white'
+              }`}
             >
               CP
+            </button>
+            <button
+              onClick={applyAM}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isAM 
+                  ? 'bg-red-500 text-white' 
+                  : 'bg-red-100 text-red-600 hover:bg-red-500 hover:text-white'
+              }`}
+            >
+              AM
             </button>
           </div>
         </div>
@@ -283,28 +303,29 @@ export function DayShiftModal({ employeeId, date, weekStart, onClose }: DayShift
           <div className={`flex items-center gap-3 p-3 rounded-xl border ${
             isRestDay ? 'border-muted bg-secondary/50' : 
             isCP ? 'border-orange-300 bg-orange-50' : 
+            isAM ? 'border-red-300 bg-red-50' :
             'border-border'
           }`}>
             <div className="flex items-center gap-2 flex-1">
               <input
                 type="time"
-                value={isCP ? '' : startTime}
+                value={(isCP || isAM) ? '' : startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                disabled={isCP}
-                placeholder={isCP ? 'CP' : ''}
+                disabled={isCP || isAM}
+                placeholder={isCP ? 'CP' : isAM ? 'AM' : ''}
                 className={`bg-input border border-border rounded-lg px-3 py-2 text-sm w-full ${
-                  (isRestDay || isCP) ? 'opacity-50' : ''
+                  (isRestDay || isCP || isAM) ? 'opacity-50' : ''
                 }`}
               />
               <span className="text-muted-foreground">-</span>
               <input
                 type="time"
-                value={isCP ? '' : endTime}
+                value={(isCP || isAM) ? '' : endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                disabled={isCP}
-                placeholder={isCP ? 'CP' : ''}
+                disabled={isCP || isAM}
+                placeholder={isCP ? 'CP' : isAM ? 'AM' : ''}
                 className={`bg-input border border-border rounded-lg px-3 py-2 text-sm w-full ${
-                  (isRestDay || isCP) ? 'opacity-50' : ''
+                  (isRestDay || isCP || isAM) ? 'opacity-50' : ''
                 }`}
               />
             </div>
@@ -315,12 +336,24 @@ export function DayShiftModal({ employeeId, date, weekStart, onClose }: DayShift
                   ? 'bg-muted text-foreground' 
                   : isCP 
                     ? 'bg-orange-500 text-white'
-                    : 'bg-secondary text-secondary-foreground hover:bg-muted'
+                    : isAM
+                      ? 'bg-red-500 text-white'
+                      : 'bg-secondary text-secondary-foreground hover:bg-muted'
               }`}
             >
-              {isRestDay ? '✓ Repos' : isCP ? '✓ CP' : 'Repos'}
+              {isRestDay ? '✓ Repos' : isCP ? '✓ CP' : isAM ? '✓ AM' : 'Repos'}
             </button>
           </div>
+          
+          {/* Message AM */}
+          {isAM && (
+            <div className="mt-3 p-3 rounded-lg bg-red-50 border border-red-200">
+              <div className="flex items-center gap-2">
+                <Icon icon="solar:health-bold" className="size-4 text-red-600" />
+                <span className="text-sm font-medium text-red-700">Arrêt maladie</span>
+              </div>
+            </div>
+          )}
           
           {isCP && cpData && (
             <div className={`mt-3 p-3 rounded-lg ${

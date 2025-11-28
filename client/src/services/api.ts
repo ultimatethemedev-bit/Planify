@@ -217,3 +217,47 @@ export const settingsApi = {
     return data
   },
 }
+
+// Timesheets API
+export const timesheetsApi = {
+  // Valider le planning et créer les timesheets
+  validatePlanning: async (weekStart: string) => {
+    const { data } = await api.post('/timesheets/validate', { weekStart })
+    return data
+  },
+  
+  // Récupérer les timesheets d'une semaine
+  getByWeek: async (weekStart: string) => {
+    const { data } = await api.get('/timesheets', { params: { weekStart } })
+    return data
+  },
+  
+  // Récupérer les timesheets d'un employé
+  getByEmployee: async (employeeId: string, month?: string, year?: string) => {
+    const { data } = await api.get(`/timesheets/employee/${employeeId}`, {
+      params: { month, year }
+    })
+    return data
+  },
+  
+  // Mettre à jour les heures réalisées d'un jour
+  updateDay: async (employeeId: string, payload: {
+    weekStart: string
+    date: string
+    actualStart?: string
+    actualEnd?: string
+    note?: string
+    type?: 'work' | 'rest' | 'cp' | 'am'
+  }) => {
+    const { data } = await api.put(`/timesheets/${employeeId}/day`, payload)
+    return data
+  },
+  
+  // Récap mensuel d'un employé
+  getSummary: async (employeeId: string, year?: number, month?: number) => {
+    const { data } = await api.get(`/timesheets/summary/${employeeId}`, {
+      params: { year, month }
+    })
+    return data
+  },
+}
