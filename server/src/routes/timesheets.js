@@ -394,8 +394,16 @@ router.get('/summary/:employeeId', async (req, res) => {
           weekAM++
         }
         
-        if (day.note) {
-          notes.push({ date: day.date, note: day.note })
+        // Ajouter le jour si :
+        // 1. Il y a une note OU
+        // 2. Il y a un delta (heures modifiées)
+        const dayDelta = day.actualMinutes - day.plannedMinutes
+        if (day.note || dayDelta !== 0) {
+          notes.push({ 
+            date: day.date, 
+            note: day.note || '', 
+            delta: dayDelta 
+          })
         }
       })
       

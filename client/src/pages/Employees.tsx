@@ -3,6 +3,7 @@ import { Icon } from '@iconify/react'
 import toast from 'react-hot-toast'
 import { Header } from '../components/layout/Header'
 import { AddEmployeeModal } from '../components/employees/AddEmployeeModal'
+import { EmployeeDetailsModal } from '../components/employees/EmployeeDetailsModal'
 import { useEmployeesStore, Employee } from '../stores/employeesStore'
 import { usePlanningStore } from '../stores/planningStore'
 import { employeesApi } from '../services/api'
@@ -14,6 +15,7 @@ export function Employees() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [detailsEmployee, setDetailsEmployee] = useState<Employee | null>(null)
   
   // Fetch employees on mount
   useEffect(() => {
@@ -197,6 +199,13 @@ export function Employees() {
                     
                     <div className="flex items-center gap-2 w-full">
                       <button 
+                        onClick={() => setDetailsEmployee(employee)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                      >
+                        <Icon icon="solar:chart-bold" className="size-4" />
+                        Détails
+                      </button>
+                      <button 
                         onClick={() => handleEdit(employee)}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-secondary transition-colors"
                       >
@@ -224,6 +233,14 @@ export function Employees() {
         <AddEmployeeModal 
           employee={editingEmployee}
           onClose={handleCloseModal}
+        />
+      )}
+      
+      {/* Details Modal */}
+      {detailsEmployee && (
+        <EmployeeDetailsModal
+          employee={detailsEmployee}
+          onClose={() => setDetailsEmployee(null)}
         />
       )}
     </div>

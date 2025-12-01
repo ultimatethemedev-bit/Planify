@@ -629,6 +629,7 @@ export function Planning() {
                       const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
                       const isRestDay = shift && shift.startTime === '00:00' && shift.endTime === '00:00'
                       const isCP = shift && shift.startTime === 'CP' && shift.endTime === 'CP'
+                      const isAM = shift && shift.startTime === 'AM' && shift.endTime === 'AM'
                       const dateStr = format(date, 'yyyy-MM-dd')
                       const dayAlert = hasAlertForDay(legalAlerts, employee._id, dateStr)
                       
@@ -663,14 +664,44 @@ export function Planning() {
                                   CP
                                 </div>
                               </div>
-                            ) : (
-                              <div 
-                                className={`${colorClasses.bg} rounded-lg p-2 h-full flex items-center justify-center ${dayAlert ? 'ring-2 ring-red-400' : ''}`}
-                              >
-                                <div className={`text-xs font-bold ${colorClasses.text}`}>
-                                  {shift.startTime}-{shift.endTime}
+                            ) : isAM ? (
+                              <div className="bg-red-100 rounded-lg p-2 h-full flex items-center justify-center">
+                                <div className="text-xs font-bold text-red-700">
+                                  AM
                                 </div>
                               </div>
+                            ) : (
+                              (() => {
+                                // Trouver le timesheet de l'employé pour ce jour
+                                const employeeTimesheet = timesheets.find(ts => ts.employeeId === employee._id)
+                                const timesheetDay = employeeTimesheet?.days.find(d => d.date === dateStr)
+                                const hasRealizedHours = timesheetDay && timesheetDay.actualStart && timesheetDay.actualEnd
+                                
+                                return (
+                                  <div 
+                                    className={`${colorClasses.bg} rounded-lg p-2 h-full flex flex-col items-center justify-center gap-0.5 ${dayAlert ? 'ring-2 ring-red-400' : ''}`}
+                                  >
+                                    {/* Si planning validé ET heures réalisées différentes */}
+                                    {planning?.isValidated && hasRealizedHours ? (
+                                      <>
+                                        {/* Horaires prévu (grisé, petite police) */}
+                                        <div className="text-[10px] text-muted-foreground line-through opacity-60">
+                                          {shift.startTime}-{shift.endTime}
+                                        </div>
+                                        {/* Horaires réalisé (couleur, grosse police) */}
+                                        <div className={`text-xs font-bold ${colorClasses.text}`}>
+                                          {timesheetDay.actualStart}-{timesheetDay.actualEnd}
+                                        </div>
+                                      </>
+                                    ) : (
+                                      /* Affichage normal si pas validé ou pas d'heures réalisées */
+                                      <div className={`text-xs font-bold ${colorClasses.text}`}>
+                                        {shift.startTime}-{shift.endTime}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })()
                             )
                           ) : (
                             <div className="border-2 border-dashed border-border rounded-lg h-full min-h-[40px] flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
