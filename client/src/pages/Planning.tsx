@@ -25,6 +25,10 @@ export function Planning() {
   const [isLoadingPlanning, setIsLoadingPlanning] = useState(false)
   const [isValidating, setIsValidating] = useState(false)
   
+  // États pour le drag & drop
+  const [draggedShift, setDraggedShift] = useState<{ employeeId: string; date: string; shift: any } | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ employeeId: string; date: string } | null>(null)
+  
   const weekDays = getWeekDays(currentWeekStart)
   const weekEnd = addDays(currentWeekStart, 6)
   
@@ -204,26 +208,24 @@ export function Planning() {
       const nextWeekStart = addWeeks(currentWeekStart, 1)
       const nextWeekStartStr = format(nextWeekStart, 'yyyy-MM-dd')
       
-      // Créer les nouveaux shifts pour la semaine suivante
-      const duplicatedShifts = planning.shifts.map(shift => {
-        const shiftDate = new Date(shift.date)
-        const daysDiff = differenceInWeeks(shiftDate, currentWeekStart) * 7 + shiftDate.getDay() - currentWeekStart.getDay()
-        const newDate = addDays(nextWeekStart, daysDiff)
-        
-        return {
-          employeeId: shift.employeeId,
-          date: format(newDate, 'yyyy-MM-dd'),
-          startTime: shift.startTime,
-          endTime: shift.endTime,
-        }
-      })
+      // Créer les nouveaux shifts pour la semaine suivante (simple : +7 jours)
+      const duplicatedShifts = planning.shifts.map(shift => ({
+        employeeId: shift.employeeId,
+        date: format(addDays(new Date(shift.date), 7), 'yyyy-MM-dd'),
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+      }))
       
       // Charger le planning de la semaine suivante
       const { planningApi } = await import('../services/api')
       const existingNextWeekPlanning = await planningApi.getByWeek(nextWeekStartStr)
       
-      // Fusionner avec les shifts existants (si il y en a)
-      const otherShifts = existingNextWeekPlanning?.shifts || []
+      // Supprimer les shifts existants pour les employés concernés
+      const employeeIds = new Set(planning.shifts.map(s => s.employeeId))
+      const otherShifts = (existingNextWeekPlanning?.shifts || [])
+        .filter((shift: any) => !employeeIds.has(shift.employeeId))
+      
+      // Remplacer les shifts (on garde les autres employés + on ajoute les shifts dupliqués)
       const response = await planningApi.createOrUpdate({
         weekStart: nextWeekStartStr,
         shifts: [...otherShifts, ...duplicatedShifts],
@@ -374,6 +376,95 @@ export function Planning() {
   
   const handlePrint = () => {
     window.print()
+  }
+  
+  // Fonctions drag & drop
+  const handleDragStart = (e: React.DragEvent, employeeId: string, dateStr: string, shift: any) => {
+    // Bloquer le drag si planning validé
+    if (planning?.isValidated) {
+      e.preventDefault()
+      toast.error('Planning validé, modification impossible')
+      return
+    }
+    
+    setDraggedShift({ employeeId, date: dateStr, shift })
+    e.dataTransfer.effectAllowed = 'move'
+  }
+  
+  const handleDragOver = (e: React.DragEvent, employeeId: string, dateStr: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDropTarget({ employeeId, date: dateStr })
+  }
+  
+  const handleDragLeave = () => {
+    setDropTarget(null)
+  }
+  
+  const handleDrop = async (e: React.DragEvent, targetEmployeeId: string, targetDateStr: string) => {
+    e.preventDefault()
+    setDropTarget(null)
+    
+    if (!draggedShift || !planning) return
+    
+    // Si on drop sur la même case, rien à faire
+    if (draggedShift.employeeId === targetEmployeeId && draggedShift.date === targetDateStr) {
+      setDraggedShift(null)
+      return
+    }
+    
+    try {
+      const { planningApi } = await import('../services/api')
+      const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd')
+      
+      // Récupérer le shift de la case cible (si existe)
+      const targetShift = planning.shifts?.find(
+        s => s.employeeId === targetEmployeeId && s.date === targetDateStr
+      )
+      
+      // Créer le nouveau tableau de shifts
+      let newShifts = planning.shifts?.filter(
+        s => !(s.employeeId === draggedShift.employeeId && s.date === draggedShift.date) &&
+             !(s.employeeId === targetEmployeeId && s.date === targetDateStr)
+      ) || []
+      
+      // Ajouter le shift draggé à la nouvelle position
+      newShifts.push({
+        employeeId: targetEmployeeId,
+        date: targetDateStr,
+        startTime: draggedShift.shift.startTime,
+        endTime: draggedShift.shift.endTime,
+      })
+      
+      // Si swap : ajouter le shift cible à l'ancienne position
+      if (targetShift) {
+        newShifts.push({
+          employeeId: draggedShift.employeeId,
+          date: draggedShift.date,
+          startTime: targetShift.startTime,
+          endTime: targetShift.endTime,
+        })
+      }
+      
+      // Sauvegarder
+      const response = await planningApi.createOrUpdate({
+        weekStart: weekStartStr,
+        shifts: newShifts,
+      })
+      
+      setPlanning(response)
+      toast.success(targetShift ? 'Shifts échangés !' : 'Shift déplacé !')
+    } catch (error) {
+      console.error('Erreur drag & drop:', error)
+      toast.error('Erreur lors du déplacement')
+    } finally {
+      setDraggedShift(null)
+    }
+  }
+  
+  const handleDragEnd = () => {
+    setDraggedShift(null)
+    setDropTarget(null)
   }
   
   return (
@@ -633,13 +724,24 @@ export function Planning() {
                       const dateStr = format(date, 'yyyy-MM-dd')
                       const dayAlert = hasAlertForDay(legalAlerts, employee._id, dateStr)
                       
+                      const isDropTarget = dropTarget?.employeeId === employee._id && dropTarget?.date === dateStr
+                      const isDragging = draggedShift?.employeeId === employee._id && draggedShift?.date === dateStr
+                      
                       return (
                         <div 
                           key={dayIndex} 
-                          className={`flex-1 min-w-[120px] p-2 border-r border-border last:border-r-0 hover:bg-secondary/30 transition-colors cursor-pointer relative ${
+                          className={`flex-1 min-w-[120px] p-2 border-r border-border last:border-r-0 transition-colors relative ${
                             isToday ? 'bg-primary/5' : ''
-                          }`}
-                          onClick={() => setSelectedDayData({ employeeId: employee._id, date })}
+                          } ${isDropTarget ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-secondary/30'} ${isDragging ? 'opacity-50' : ''}`}
+                          onClick={(e) => {
+                            // Ne pas ouvrir la modal si on est en train de drag
+                            if (!draggedShift) {
+                              setSelectedDayData({ employeeId: employee._id, date })
+                            }
+                          }}
+                          onDragOver={(e) => handleDragOver(e, employee._id, dateStr)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, employee._id, dateStr)}
                         >
                           {/* Indicateur d'alerte */}
                           {dayAlert && (
@@ -653,19 +755,34 @@ export function Planning() {
                           
                           {shift ? (
                             isRestDay ? (
-                              <div className="bg-secondary rounded-lg p-2 h-full flex items-center justify-center">
+                              <div 
+                                draggable={!planning?.isValidated}
+                                onDragStart={(e) => handleDragStart(e, employee._id, dateStr, shift)}
+                                onDragEnd={handleDragEnd}
+                                className="bg-secondary rounded-lg p-2 h-full flex items-center justify-center cursor-grab active:cursor-grabbing"
+                              >
                                 <div className="text-xs font-bold text-muted-foreground">
                                   Repos
                                 </div>
                               </div>
                             ) : isCP ? (
-                              <div className="bg-orange-100 rounded-lg p-2 h-full flex items-center justify-center">
+                              <div 
+                                draggable={!planning?.isValidated}
+                                onDragStart={(e) => handleDragStart(e, employee._id, dateStr, shift)}
+                                onDragEnd={handleDragEnd}
+                                className="bg-orange-100 rounded-lg p-2 h-full flex items-center justify-center cursor-grab active:cursor-grabbing"
+                              >
                                 <div className="text-xs font-bold text-orange-700">
                                   CP
                                 </div>
                               </div>
                             ) : isAM ? (
-                              <div className="bg-red-100 rounded-lg p-2 h-full flex items-center justify-center">
+                              <div 
+                                draggable={!planning?.isValidated}
+                                onDragStart={(e) => handleDragStart(e, employee._id, dateStr, shift)}
+                                onDragEnd={handleDragEnd}
+                                className="bg-red-100 rounded-lg p-2 h-full flex items-center justify-center cursor-grab active:cursor-grabbing"
+                              >
                                 <div className="text-xs font-bold text-red-700">
                                   AM
                                 </div>
@@ -679,7 +796,10 @@ export function Planning() {
                                 
                                 return (
                                   <div 
-                                    className={`${colorClasses.bg} rounded-lg p-2 h-full flex flex-col items-center justify-center gap-0.5 ${dayAlert ? 'ring-2 ring-red-400' : ''}`}
+                                    draggable={!planning?.isValidated}
+                                    onDragStart={(e) => handleDragStart(e, employee._id, dateStr, shift)}
+                                    onDragEnd={handleDragEnd}
+                                    className={`${colorClasses.bg} rounded-lg p-2 h-full flex flex-col items-center justify-center gap-0.5 cursor-grab active:cursor-grabbing ${dayAlert ? 'ring-2 ring-red-400' : ''}`}
                                   >
                                     {/* Si planning validé ET heures réalisées différentes */}
                                     {planning?.isValidated && hasRealizedHours ? (

@@ -99,9 +99,9 @@ router.post('/validate', async (req, res) => {
             plannedStart: type === 'work' ? shift.startTime : null,
             plannedEnd: type === 'work' ? shift.endTime : null,
             plannedMinutes: minutes,
-            actualStart: type === 'work' ? shift.startTime : null,
-            actualEnd: type === 'work' ? shift.endTime : null,
-            actualMinutes: minutes,
+            actualStart: null,
+            actualEnd: null,
+            actualMinutes: 0,
             deltaMinutes: 0,
             note: '',
             modifications: [],
@@ -373,10 +373,17 @@ router.get('/summary/:employeeId', async (req, res) => {
     let totalAM = 0
     
     const weeklySummaries = timesheets.map(ts => {
-      // Filtrer les jours qui sont dans le mois
+      // Filtrer les jours qui sont dans le mois (ancienne logique = correcte pour la paie)
       const daysInMonth = ts.days.filter(d => {
         return d.date >= startOfMonth && d.date <= endOfMonth
       })
+      
+      // Vérifier si la semaine chevauche le mois (pour afficher l'info)
+      const allDays = ts.days
+      const hasOverlap = allDays.some(d => d.date < startOfMonth || d.date > endOfMonth)
+      
+      // Compter combien de jours sont dans le mois
+      const daysInMonthCount = daysInMonth.length
       
       let weekPlanned = 0
       let weekActual = 0
@@ -396,9 +403,11 @@ router.get('/summary/:employeeId', async (req, res) => {
         
         // Ajouter le jour si :
         // 1. Il y a une note OU
-        // 2. Il y a un delta (heures modifiées)
+        // 2. Il y a un delta (heures modifiées) ET des heures réalisées ont été saisies
         const dayDelta = day.actualMinutes - day.plannedMinutes
-        if (day.note || dayDelta !== 0) {
+        const hasActualHours = day.actualStart && day.actualEnd
+        
+        if (day.note || (dayDelta !== 0 && hasActualHours)) {
           notes.push({ 
             date: day.date, 
             note: day.note || '', 
@@ -421,6 +430,8 @@ router.get('/summary/:employeeId', async (req, res) => {
         cpDays: weekCP,
         amDays: weekAM,
         notes,
+        overlapsMonth: hasOverlap, // Indique si la semaine chevauche
+        daysInMonthCount, // Nombre de jours dans le mois
       }
     })
     

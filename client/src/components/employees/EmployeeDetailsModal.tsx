@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, differenceInDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { timesheetsApi } from '../../services/api'
+import { useSettingsStore } from '../../stores/settingsStore'
 import toast from 'react-hot-toast'
 
 interface Employee {
@@ -27,6 +28,8 @@ interface WeekSummary {
   cpDays: number
   amDays: number
   notes: Array<{ date: string; note: string; delta?: number }>
+  overlapsMonth?: boolean
+  daysInMonthCount?: number
 }
 
 interface Summary {
@@ -44,8 +47,38 @@ export function EmployeeDetailsModal({ employee, onClose }: EmployeeDetailsModal
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [weeks, setWeeks] = useState<WeekSummary[]>([])
   const [summary, setSummary] = useState<Summary | null>(null)
+  const { weekNumberConfig } = useSettingsStore()
 
   const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+  
+  // Fonction pour calculer le numéro de semaine depuis la référence
+  const getWeekNumber = (weekStartDate: string): number => {
+    // Si pas de config, retourner 1
+    if (!weekNumberConfig?.referenceDate) {
+      console.log('⚠️ Pas de referenceDate dans weekNumberConfig')
+      return 1
+    }
+    
+    try {
+      const referenceDate = parseISO(weekNumberConfig.referenceDate)
+      const currentWeekStart = parseISO(weekStartDate)
+      
+      const diffInDays = differenceInDays(currentWeekStart, referenceDate)
+      const weekNumber = Math.floor(diffInDays / 7) + (weekNumberConfig.referenceWeekNumber || 1)
+      
+      console.log('📅 Week calc:', {
+        weekStartDate,
+        referenceDate: weekNumberConfig.referenceDate,
+        diffInDays,
+        weekNumber
+      })
+      
+      return weekNumber
+    } catch (error) {
+      console.error('❌ Erreur calcul semaine:', error)
+      return 1
+    }
+  }
 
   useEffect(() => {
     fetchTimesheetSummary()
@@ -133,7 +166,7 @@ export function EmployeeDetailsModal({ employee, onClose }: EmployeeDetailsModal
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4"
       onClick={onClose}
     >
       <div 
@@ -208,14 +241,28 @@ export function EmployeeDetailsModal({ employee, onClose }: EmployeeDetailsModal
                     const endDate = parseISO(week.weekEnd)
                     const isDeltaPositive = week.deltaMinutes > 0
                     const isDeltaNegative = week.deltaMinutes < 0
+                    const weekNumber = getWeekNumber(week.weekStart)
                     
                     return (
                       <div key={index} className="bg-secondary/30 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <div className="font-medium text-sm text-foreground">
-                            {format(startDate, 'd MMM', { locale: fr })} - {format(endDate, 'd MMM', { locale: fr })}
+                            {format(startDate, 'd MMM', { locale: fr })} - {format(endDate, 'd MMM', { locale: fr })} 
+                            <span className="text-muted-foreground ml-2">(Semaine {weekNumber})</span>
                           </div>
                         </div>
+                        
+                        {/* Avertissement si la semaine chevauche 2 mois */}
+                        {week.overlapsMonth && (
+                          <div className="mb-3 flex items-start gap-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                            <Icon icon="solar:info-circle-bold" className="size-4 shrink-0 mt-0.5" />
+                            <span>
+                              Semaine {format(startDate, 'd MMM', { locale: fr })} - {format(endDate, 'd MMM', { locale: fr })} : 
+                              seuls les {week.daysInMonthCount || 0} jour{(week.daysInMonthCount || 0) > 1 ? 's' : ''} de {format(parseISO(`${currentYear}-${String(currentMonth).padStart(2, '0')}-01`), 'MMMM', { locale: fr })} sont comptés ici.
+                            </span>
+                          </div>
+                        )}
+                        
                         <div className="grid grid-cols-3 gap-4 text-sm">
                           <div>
                             <div className="text-muted-foreground text-xs mb-1">Prévu</div>

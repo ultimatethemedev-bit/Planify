@@ -7,6 +7,7 @@ import { Dashboard } from './pages/Dashboard'
 import { Planning } from './pages/Planning'
 import { Employees } from './pages/Employees'
 import { Settings } from './pages/Settings'
+import { Account } from './pages/Account'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="planning" element={<Planning />} />
         <Route path="employees" element={<Employees />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="account" element={<Account />} />
       </Route>
 
       {/* Fallback */}

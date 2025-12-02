@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator'
 import User from '../models/User.js'
 import Settings from '../models/Settings.js'
 import { auth, generateToken } from '../middleware/auth.js'
+import { sendWelcomeEmail } from '../utils/email.js'
 
 const router = express.Router()
 
@@ -59,6 +60,11 @@ router.post('/register', [
     
     // Create default settings
     await Settings.create({ userId: user._id })
+    
+    // Envoyer l'email de bienvenue (ne pas bloquer si erreur)
+    sendWelcomeEmail(user.email, `${user.firstName} ${user.lastName}`).catch(err => {
+      console.error('Erreur envoi email bienvenue (non bloquant):', err)
+    })
     
     // Generate token
     const token = generateToken(user._id)

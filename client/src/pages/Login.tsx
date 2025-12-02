@@ -66,6 +66,7 @@ export function Login() {
               />
               <input
                 type="email"
+                autoComplete="email"
                 placeholder="exemple@email.com"
                 className={`w-full pl-12 pr-4 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground ${
                   errors.email ? 'border-destructive' : 'border-border'
@@ -95,6 +96,7 @@ export function Login() {
               />
               <input
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
                 placeholder="••••••••"
                 className={`w-full pl-12 pr-12 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground ${
                   errors.password ? 'border-destructive' : 'border-border'

@@ -158,13 +158,13 @@ export function Header({ showAvatar = true, rightContent }: HeaderProps) {
                 
                 <button
                   onClick={() => {
-                    navigate('/settings')
+                    navigate('/account')
                     setShowMenu(false)
                   }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
                 >
-                  <Icon icon="solar:settings-bold" className="size-5 text-muted-foreground" />
-                  Réglages
+                  <Icon icon="solar:user-id-bold" className="size-5 text-muted-foreground" />
+                  Mon compte
                 </button>
                 
                 <button
