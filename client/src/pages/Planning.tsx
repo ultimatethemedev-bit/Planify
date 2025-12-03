@@ -9,7 +9,7 @@ import { useSettingsStore, StoreHours } from '../stores/settingsStore'
 import { ShiftHoursModal } from '../components/planning/ShiftHoursModal'
 import { DayShiftModal } from '../components/planning/DayShiftModal'
 import { calculateWeeklyHours, getWeekDays, getColorClasses, DAYS_SHORT_FR } from '../utils/planning'
-import { checkLegalAlerts, hasAlertForDay, LegalAlert } from '../utils/legalAlerts'
+import { checkLegalAlerts, hasAlertForDay } from '../utils/legalAlerts'
 import { timesheetsApi } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -22,7 +22,7 @@ export function Planning() {
   const [selectedDayData, setSelectedDayData] = useState<{ employeeId: string; date: Date } | null>(null)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [isDuplicating, setIsDuplicating] = useState(false)
-  const [isLoadingPlanning, setIsLoadingPlanning] = useState(false)
+  const [, setIsLoadingPlanning] = useState(false)
   const [isValidating, setIsValidating] = useState(false)
   
   // États pour le drag & drop
@@ -255,11 +255,37 @@ export function Planning() {
       
       toast.loading('Génération de l\'image...', { id: 'export' })
       
+      // NOUVELLE APPROCHE : Ajouter une classe CSS temporaire au planning
+      const exportStyles = document.createElement('style')
+      exportStyles.id = 'export-styles'
+      exportStyles.textContent = `
+        .export-mode .rounded-lg,
+        .export-mode .p-2 > div {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          height: 100% !important;
+          min-height: 60px !important;
+        }
+        
+        .export-mode .rounded-lg > *,
+        .export-mode .p-2 > div > * {
+          line-height: 1.2 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+      `
+      document.head.appendChild(exportStyles)
+      planningElement.classList.add('export-mode')
+      
+      // Attendre que les styles s'appliquent
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       // Créer un container temporaire pour l'export
       const exportContainer = document.createElement('div')
       exportContainer.style.cssText = `
         position: absolute;
-        left: -9999px;
+        left: 0;
         top: 0;
         background: white;
         padding: 32px;
@@ -299,49 +325,6 @@ export function Planning() {
         `
       })
       
-      // Fix avatars (cercles avec initiales) - forcer centrage
-      const avatars = clonedGrid.querySelectorAll('.rounded-full')
-      avatars.forEach(el => {
-        const element = el as HTMLElement
-        // Seulement les cercles d'avatar (pas les petits points de couleur)
-        if (element.classList.contains('size-12') || element.style.width === '48px') {
-          element.style.display = 'flex'
-          element.style.alignItems = 'center'
-          element.style.justifyContent = 'center'
-          element.style.textAlign = 'center'
-        }
-      })
-      
-      // Fix toutes les cards de shift (horaires, repos, CP)
-      const allCells = clonedGrid.querySelectorAll('.p-2 > div, .p-2 > .bg-secondary, .p-2 > .bg-orange-100')
-      allCells.forEach(el => {
-        const element = el as HTMLElement
-        const bgColor = window.getComputedStyle(element).backgroundColor
-        // Si c'est une card colorée (pas transparent)
-        if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
-          element.style.display = 'flex'
-          element.style.alignItems = 'center'
-          element.style.justifyContent = 'center'
-          element.style.minHeight = '60px'
-          element.style.textAlign = 'center'
-        }
-      })
-      
-      // Fix cards avec classe rounded-lg (shift cards)
-      const shiftCards = clonedGrid.querySelectorAll('.rounded-lg')
-      shiftCards.forEach(el => {
-        const element = el as HTMLElement
-        const bgColor = window.getComputedStyle(element).backgroundColor
-        // Si c'est une card avec background (pas la grille)
-        if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent' && bgColor !== 'rgb(255, 255, 255)') {
-          element.style.display = 'flex'
-          element.style.alignItems = 'center'
-          element.style.justifyContent = 'center'
-          element.style.minHeight = '60px'
-          element.style.textAlign = 'center'
-        }
-      })
-      
       exportContainer.appendChild(clonedGrid)
       
       // Ajouter au DOM temporairement
@@ -360,6 +343,10 @@ export function Planning() {
       
       // Supprimer le container temporaire
       document.body.removeChild(exportContainer)
+      
+      // Supprimer les styles temporaires
+      planningElement.classList.remove('export-mode')
+      document.getElementById('export-styles')?.remove()
       
       // Télécharger
       const link = document.createElement('a')
@@ -469,6 +456,27 @@ export function Planning() {
   
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
+      {/* Styles pour l'impression */}
+      <style>{`
+        @media print {
+          @page {
+            size: landscape;
+            margin: 10mm;
+          }
+          
+          /* Masquer les éléments non imprimables */
+          .no-print {
+            display: none !important;
+          }
+          
+          /* Forcer l'affichage des couleurs */
+          body, * {
+            print-color-adjust: exact !important;
+            -webkit-print-color-adjust: exact !important;
+          }
+        }
+      `}</style>
+      
       {/* Header */}
       <header className="bg-card shadow-sm sticky top-0 z-20 no-print">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">

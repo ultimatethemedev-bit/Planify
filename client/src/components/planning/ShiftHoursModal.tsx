@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
-import { format, addDays } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useEmployeesStore } from '../../stores/employeesStore'
 import { usePlanningStore, Shift } from '../../stores/planningStore'
@@ -187,26 +186,6 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
     }
   }
   
-  const copyMondayToAll = () => {
-    const mondayDateStr = format(weekDays[0], 'yyyy-MM-dd')
-    const mondayShift = shifts[mondayDateStr]
-    
-    if (!mondayShift.startTime || !mondayShift.endTime) {
-      toast.error('Définissez d\'abord les horaires du lundi')
-      return
-    }
-    
-    setShifts(prev => {
-      const updated = { ...prev }
-      Object.keys(updated).forEach(dateStr => {
-        if (dateStr !== mondayDateStr) {
-          updated[dateStr] = { ...mondayShift }
-        }
-      })
-      return updated
-    })
-    toast.success('Horaires copiés sur toute la semaine')
-  }
   
   const handleSave = async () => {
     setIsLoading(true)
@@ -364,7 +343,6 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
           {weekDays.map((date, index) => {
             const dateStr = format(date, 'yyyy-MM-dd')
             const dayShift = shifts[dateStr] || { startTime: '', endTime: '' }
-            const isSunday = index === 6
             const isRestDay = dayShift.startTime === '00:00' && dayShift.endTime === '00:00'
             const isCP = dayShift.startTime === 'CP' && dayShift.endTime === 'CP'
             const isAM = dayShift.startTime === 'AM' && dayShift.endTime === 'AM'
