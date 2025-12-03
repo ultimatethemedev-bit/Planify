@@ -158,6 +158,11 @@ export const settingsApi = {
     return data
   },
   
+  updateWeekNumberConfig: async (config: { referenceDate: string; referenceWeekNumber: number }) => {
+    const { data } = await api.put('/settings/week-number-config', config)
+    return data
+  },
+  
   getEvents: async () => {
     const { data } = await api.get('/settings/events')
     return data
@@ -206,14 +211,6 @@ export const settingsApi = {
   
   getWeekNumberConfig: async () => {
     const { data } = await api.get('/settings/week-number-config')
-    return data
-  },
-  
-  updateWeekNumberConfig: async (config: {
-    referenceDate: string
-    referenceWeekNumber: number
-  }) => {
-    const { data } = await api.put('/settings/week-number-config', config)
     return data
   },
 }

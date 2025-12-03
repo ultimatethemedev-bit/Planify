@@ -38,6 +38,7 @@ export function Settings() {
   const [isLoading, setIsLoading] = useState(false)
   const [hasHoursChanged, setHasHoursChanged] = useState(false)
   const [hasTemplatesChanged, setHasTemplatesChanged] = useState(false)
+  const [hasWeekConfigChanged, setHasWeekConfigChanged] = useState(false) // ← AJOUT 1
   const [showEventForm, setShowEventForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CommercialEvent | null>(null)
   
@@ -75,6 +76,20 @@ export function Settings() {
       await settingsApi.updateStoreHours(storeHours)
       toast.success('Horaires enregistrés')
       setHasHoursChanged(false)
+    } catch (error) {
+      toast.error('Erreur lors de l\'enregistrement')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  // ← AJOUT 2 : Fonction pour sauvegarder weekConfig
+  const handleSaveWeekConfig = async () => {
+    setIsLoading(true)
+    try {
+      await settingsApi.updateWeekNumberConfig(weekNumberConfig)
+      toast.success('Configuration des semaines enregistrée')
+      setHasWeekConfigChanged(false)
     } catch (error) {
       toast.error('Erreur lors de l\'enregistrement')
     } finally {
@@ -304,10 +319,13 @@ export function Settings() {
               <input
                 type="date"
                 value={weekNumberConfig.referenceDate}
-                onChange={(e) => setWeekNumberConfig({ 
-                  ...weekNumberConfig, 
-                  referenceDate: e.target.value 
-                })}
+                onChange={(e) => {
+                  setWeekNumberConfig({ 
+                    ...weekNumberConfig, 
+                    referenceDate: e.target.value 
+                  })
+                  setHasWeekConfigChanged(true) // ← AJOUT 3
+                }}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-input"
               />
             </div>
@@ -318,14 +336,31 @@ export function Settings() {
                 min="1"
                 max="52"
                 value={weekNumberConfig.referenceWeekNumber}
-                onChange={(e) => setWeekNumberConfig({ 
-                  ...weekNumberConfig, 
-                  referenceWeekNumber: parseInt(e.target.value) || 1 
-                })}
+                onChange={(e) => {
+                  setWeekNumberConfig({ 
+                    ...weekNumberConfig, 
+                    referenceWeekNumber: parseInt(e.target.value) || 1 
+                  })
+                  setHasWeekConfigChanged(true) // ← AJOUT 4
+                }}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-input text-center"
               />
             </div>
           </div>
+          
+          {/* ← AJOUT 5 : Bouton enregistrer */}
+          {hasWeekConfigChanged && (
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={handleSaveWeekConfig}
+                disabled={isLoading}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+              >
+                <Icon icon="solar:check-circle-bold" className="size-5" />
+                Enregistrer
+              </button>
+            </div>
+          )}
         </div>
       </section>
       
@@ -355,7 +390,7 @@ export function Settings() {
                   </div>
                   <div 
                     className="size-3 rounded-full" 
-                    style={{ backgroundColor: event.color }}
+                    style={{ background: event.color }}
                   />
                   <button 
                     onClick={() => handleEditEvent(event)}

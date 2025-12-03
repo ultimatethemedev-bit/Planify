@@ -115,7 +115,7 @@ export function Register() {
               />
               <input
                 type="text"
-                placeholder="Parly 2"
+                placeholder="Boutique 1"
                 className={`w-full pl-12 pr-4 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground ${
                   errors.store1 ? 'border-destructive' : 'border-border'
                 }`}
@@ -138,7 +138,7 @@ export function Register() {
               />
               <input
                 type="text"
-                placeholder="Vélizy 2"
+                placeholder="Boutique 2"
                 className="w-full pl-12 pr-4 py-3 bg-input border border-border rounded-xl text-foreground placeholder:text-muted-foreground"
                 {...register('store2')}
               />

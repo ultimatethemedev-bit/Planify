@@ -792,7 +792,11 @@ export function Planning() {
                                 // Trouver le timesheet de l'employé pour ce jour
                                 const employeeTimesheet = timesheets.find(ts => ts.employeeId === employee._id)
                                 const timesheetDay = employeeTimesheet?.days.find(d => d.date === dateStr)
-                                const hasRealizedHours = timesheetDay && timesheetDay.actualStart && timesheetDay.actualEnd
+                                
+                                // Vérifier si les heures réalisées sont DIFFÉRENTES du prévu
+                                const isModified = timesheetDay && 
+                                  (timesheetDay.actualStart !== timesheetDay.plannedStart || 
+                                   timesheetDay.actualEnd !== timesheetDay.plannedEnd)
                                 
                                 return (
                                   <div 
@@ -801,8 +805,8 @@ export function Planning() {
                                     onDragEnd={handleDragEnd}
                                     className={`${colorClasses.bg} rounded-lg p-2 h-full flex flex-col items-center justify-center gap-0.5 cursor-grab active:cursor-grabbing ${dayAlert ? 'ring-2 ring-red-400' : ''}`}
                                   >
-                                    {/* Si planning validé ET heures réalisées différentes */}
-                                    {planning?.isValidated && hasRealizedHours ? (
+                                    {/* Si planning validé ET heures réalisées MODIFIÉES */}
+                                    {planning?.isValidated && isModified ? (
                                       <>
                                         {/* Horaires prévu (grisé, petite police) */}
                                         <div className="text-[10px] text-muted-foreground line-through opacity-60">
