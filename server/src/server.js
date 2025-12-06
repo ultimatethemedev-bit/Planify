@@ -12,7 +12,7 @@ import authRoutes from './routes/auth.js'
 import employeesRoutes from './routes/employees.js'
 import planningRoutes from './routes/planning.js'
 import settingsRoutes from './routes/settings.js'
-import timesheetsRoutes from './routes/timesheets.js'
+import timesheetsRoutes from './routes/timesheet.js'
 import userRoutes from './routes/user.js'
 
 const app = express()
@@ -56,14 +56,34 @@ app.use((req, res) => {
 })
 
 // Connect to MongoDB and start server
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
+let isConnected = false
+
+async function connectDB() {
+  if (isConnected) {
+    return
+  }
+  
+  try {
+    await mongoose.connect(process.env.MONGODB_URI)
+    isConnected = true
     console.log('✅ Connected to MongoDB')
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error)
+    throw error
+  }
+}
+
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  connectDB().then(() => {
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`)
     })
   })
-  .catch((error) => {
-    console.error('❌ MongoDB connection error:', error)
-    process.exit(1)
-  })
+}
+
+// Export for Vercel
+export default async function handler(req, res) {
+  await connectDB()
+  return app(req, res)
+}
