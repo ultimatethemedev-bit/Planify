@@ -21,9 +21,7 @@ const PORT = process.env.PORT || 3001
 // Middleware
 app.use(helmet())
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.FRONTEND_URL 
-    : ['http://localhost:5173', 'http://localhost:3000'],
+  origin: process.env.CLIENT_URL || ['http://localhost:5173', 'http://localhost:3000'],
   credentials: true,
 }))
 app.use(express.json())
@@ -56,34 +54,14 @@ app.use((req, res) => {
 })
 
 // Connect to MongoDB and start server
-let isConnected = false
-
-async function connectDB() {
-  if (isConnected) {
-    return
-  }
-  
-  try {
-    await mongoose.connect(process.env.MONGODB_URI)
-    isConnected = true
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
     console.log('✅ Connected to MongoDB')
-  } catch (error) {
-    console.error('❌ MongoDB connection error:', error)
-    throw error
-  }
-}
-
-// For local development
-if (process.env.NODE_ENV !== 'production') {
-  connectDB().then(() => {
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`)
     })
   })
-}
-
-// Export for Vercel
-export default async function handler(req, res) {
-  await connectDB()
-  return app(req, res)
-}
+  .catch((error) => {
+    console.error('❌ MongoDB connection error:', error)
+    process.exit(1)
+  })
