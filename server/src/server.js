@@ -12,7 +12,7 @@ import authRoutes from './routes/auth.js'
 import employeesRoutes from './routes/employees.js'
 import planningRoutes from './routes/planning.js'
 import settingsRoutes from './routes/settings.js'
-import timesheetsRoutes from './routes/timesheet.js'
+import timesheetsRoutes from './routes/timesheets.js'
 import userRoutes from './routes/user.js'
 
 const app = express()
