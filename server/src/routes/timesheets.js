@@ -175,6 +175,87 @@ router.post('/validate', async (req, res) => {
   }
 })
 
+// POST /timesheets/unvalidate - Dévalider le planning et supprimer les timesheets
+router.post('/unvalidate', async (req, res) => {
+  try {
+    const { weekStart } = req.body
+
+    if (!req.user.currentStoreId) {
+      return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
+    }
+
+    // Récupérer le planning de la semaine
+    const planning = await Planning.findOne({
+      userId: req.userId,
+      storeId: req.user.currentStoreId,
+      weekStart,
+    })
+
+    if (!planning) {
+      return res.status(404).json({ message: 'Planning non trouvé' })
+    }
+
+    if (!planning.isValidated) {
+      return res.status(400).json({ message: 'Planning non validé' })
+    }
+
+    // Récupérer les timesheets pour vérifier s'il y a des modifications
+    const timesheets = await Timesheet.find({
+      userId: req.userId,
+      storeId: req.user.currentStoreId,
+      weekStart,
+    })
+
+    // Vérifier si des heures réalisées ont été modifiées
+    let hasModifications = false
+    let modificationsCount = 0
+
+    for (const timesheet of timesheets) {
+      for (const day of timesheet.days) {
+        // Considérer comme modifié si :
+        // - Les heures réalisées diffèrent des heures planifiées
+        // - Une note a été ajoutée
+        // - L'historique de modifications n'est pas vide
+        if (day.type === 'work') {
+          if (day.actualStart !== day.plannedStart || day.actualEnd !== day.plannedEnd) {
+            hasModifications = true
+            modificationsCount++
+          }
+        }
+        if (day.note && day.note.trim() !== '') {
+          hasModifications = true
+          modificationsCount++
+        }
+        if (day.modifications && day.modifications.length > 0) {
+          hasModifications = true
+        }
+      }
+    }
+
+    // Supprimer les timesheets
+    await Timesheet.deleteMany({
+      userId: req.userId,
+      storeId: req.user.currentStoreId,
+      weekStart,
+    })
+
+    // Dévalider le planning
+    planning.isValidated = false
+    planning.validatedAt = null
+    await planning.save()
+
+    res.json({
+      message: 'Planning dévalidé',
+      planning,
+      hadModifications: hasModifications,
+      modificationsCount,
+    })
+  } catch (error) {
+    console.error('Unvalidate planning error:', error)
+    res.status(500).json({ message: 'Erreur lors de la dévalidation' })
+  }
+})
+
 // GET /timesheets - Récupérer les timesheets d'une semaine
 router.get('/', async (req, res) => {
   try {

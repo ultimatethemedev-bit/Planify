@@ -24,6 +24,8 @@ export function Planning() {
   const [isDuplicating, setIsDuplicating] = useState(false)
   const [, setIsLoadingPlanning] = useState(false)
   const [isValidating, setIsValidating] = useState(false)
+  const [isUnvalidating, setIsUnvalidating] = useState(false)
+  const [showUnvalidateModal, setShowUnvalidateModal] = useState(false)
   
   // États pour le drag & drop
   const [draggedShift, setDraggedShift] = useState<{ employeeId: string; date: string; shift: any } | null>(null)
@@ -82,7 +84,30 @@ export function Planning() {
       setIsValidating(false)
     }
   }
-  
+
+  // Fonction pour dévalider le planning
+  const handleUnvalidatePlanning = async () => {
+    try {
+      setIsUnvalidating(true)
+      const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd')
+      const result = await timesheetsApi.unvalidatePlanning(weekStartStr)
+
+      setPlanning(result.planning)
+      setTimesheets([])
+      setShowUnvalidateModal(false)
+
+      if (result.hadModifications) {
+        toast.success(`Planning dévalidé. ${result.modificationsCount} modification(s) supprimée(s).`)
+      } else {
+        toast.success('Planning dévalidé. Vous pouvez maintenant le modifier.')
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Erreur lors de la dévalidation')
+    } finally {
+      setIsUnvalidating(false)
+    }
+  }
+
   // Calculer les alertes légales
   const legalAlerts = useMemo(() => {
     if (!planning?.shifts || planning.shifts.length === 0) return []
@@ -521,9 +546,19 @@ export function Planning() {
           <div className="flex items-center gap-2 justify-end">
             {/* Bouton Valider le planning */}
             {planning?.isValidated ? (
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
-                <Icon icon="solar:check-circle-bold" className="size-4" />
-                Validé
+              <div className="hidden sm:flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
+                  <Icon icon="solar:check-circle-bold" className="size-4" />
+                  Validé
+                </div>
+                <button
+                  onClick={() => setShowUnvalidateModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-sm font-medium hover:bg-orange-200 transition-colors"
+                  title="Dévalider le planning"
+                >
+                  <Icon icon="solar:restart-bold" className="size-4" />
+                  Dévalider
+                </button>
               </div>
             ) : (
               <button 
@@ -895,7 +930,55 @@ export function Planning() {
           </div>
         </div>
       )}
-      
+
+      {/* Unvalidate Modal */}
+      {showUnvalidateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="size-12 bg-orange-100 rounded-full flex items-center justify-center">
+                <Icon icon="solar:danger-triangle-bold" className="size-6 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-foreground">Dévalider le planning</h3>
+                <p className="text-sm text-muted-foreground">Semaine {weekNumber}</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-6">
+              Cette action va supprimer les timesheets associés et permettre la modification du planning.
+              {timesheets.length > 0 && (
+                <span className="block mt-2 text-orange-600 font-medium">
+                  ⚠️ Les heures réalisées déjà saisies seront perdues.
+                </span>
+              )}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUnvalidateModal(false)}
+                disabled={isUnvalidating}
+                className="flex-1 px-4 py-3 bg-secondary text-secondary-foreground rounded-lg font-semibold hover:bg-muted transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleUnvalidatePlanning}
+                disabled={isUnvalidating}
+                className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isUnvalidating ? (
+                  <>
+                    <Icon icon="solar:spinner-bold" className="size-5 animate-spin" />
+                    Dévalidation...
+                  </>
+                ) : (
+                  'Dévalider'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Day Shift Modal - Modal rapide pour un seul jour */}
       {selectedDayData && (
         <DayShiftModal

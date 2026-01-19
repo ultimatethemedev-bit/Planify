@@ -222,6 +222,12 @@ export const timesheetsApi = {
     const { data } = await api.post('/timesheets/validate', { weekStart })
     return data
   },
+
+  // Dévalider le planning et supprimer les timesheets
+  unvalidatePlanning: async (weekStart: string) => {
+    const { data } = await api.post('/timesheets/unvalidate', { weekStart })
+    return data
+  },
   
   // Récupérer les timesheets d'une semaine
   getByWeek: async (weekStart: string) => {
