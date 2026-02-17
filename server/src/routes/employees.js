@@ -12,9 +12,9 @@ router.use(auth)
 const handleValidation = (req, res, next) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       message: errors.array()[0].msg,
-      errors: errors.array() 
+      errors: errors.array()
     })
   }
   next()
@@ -23,18 +23,15 @@ const handleValidation = (req, res, next) => {
 // Get all employees (filtered by current store)
 router.get('/', async (req, res) => {
   try {
-    const query = { 
-      userId: req.userId,
-      isActive: true 
+    if (!req.storeId) {
+      return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
     }
-    
-    // Filtrer par boutique si l'utilisateur a un currentStoreId
-    if (req.user.currentStoreId) {
-      query.storeId = req.user.currentStoreId
-    }
-    
-    const employees = await Employee.find(query).sort({ firstName: 1 })
-    
+
+    const employees = await Employee.find({
+      storeId: req.storeId,
+      isActive: true,
+    }).sort({ firstName: 1 })
+
     res.json(employees)
   } catch (error) {
     console.error('Get employees error:', error)
@@ -47,13 +44,13 @@ router.get('/:id', async (req, res) => {
   try {
     const employee = await Employee.findOne({
       _id: req.params.id,
-      userId: req.userId,
+      storeId: req.storeId,
     })
-    
+
     if (!employee) {
       return res.status(404).json({ message: 'Employé non trouvé' })
     }
-    
+
     res.json(employee)
   } catch (error) {
     console.error('Get employee error:', error)
@@ -73,18 +70,16 @@ router.post('/', [
   handleValidation,
 ], async (req, res) => {
   try {
-    // Vérifier que l'utilisateur a une boutique sélectionnée
-    if (!req.user.currentStoreId) {
+    if (!req.storeId) {
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
     }
-    
+
     const employee = new Employee({
       ...req.body,
-      userId: req.userId,
-      storeId: req.user.currentStoreId,
+      storeId: req.storeId,
     })
     await employee.save()
-    
+
     res.status(201).json(employee)
   } catch (error) {
     console.error('Create employee error:', error)
@@ -96,15 +91,15 @@ router.post('/', [
 router.put('/:id', async (req, res) => {
   try {
     const employee = await Employee.findOneAndUpdate(
-      { _id: req.params.id, userId: req.userId },
+      { _id: req.params.id, storeId: req.storeId },
       { $set: req.body },
       { new: true, runValidators: true }
     )
-    
+
     if (!employee) {
       return res.status(404).json({ message: 'Employé non trouvé' })
     }
-    
+
     res.json(employee)
   } catch (error) {
     console.error('Update employee error:', error)
@@ -116,15 +111,15 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const employee = await Employee.findOneAndUpdate(
-      { _id: req.params.id, userId: req.userId },
+      { _id: req.params.id, storeId: req.storeId },
       { $set: { isActive: false } },
       { new: true }
     )
-    
+
     if (!employee) {
       return res.status(404).json({ message: 'Employé non trouvé' })
     }
-    
+
     res.json({ message: 'Employé supprimé' })
   } catch (error) {
     console.error('Delete employee error:', error)

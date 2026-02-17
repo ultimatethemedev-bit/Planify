@@ -5,7 +5,8 @@ import { fr } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { Header } from '../components/layout/Header'
 import { useSettingsStore, DayHours, CommercialEvent, StoreHours } from '../stores/settingsStore'
-import { settingsApi } from '../services/api'
+import { useAuthStore } from '../stores/authStore'
+import { settingsApi, storesApi } from '../services/api'
 import { DAYS_FR } from '../utils/planning'
 
 const DAY_KEYS: (keyof StoreHours)[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -21,26 +22,105 @@ const EVENT_COLORS = [
 
 const EVENT_EMOJIS = ['🔥', '🏷️', '🎁', '🎄', '💝', '🌸', '☀️', '🎃']
 
+interface TeamMember {
+  userId: string
+  firstName: string
+  lastName: string
+  email: string
+  role: 'owner' | 'member'
+  joinedAt: string
+}
+
+interface InvitationItem {
+  code: string
+  expiresAt: string
+  createdAt: string
+}
+
 export function Settings() {
-  const { 
-    storeHours, 
-    updateDayHours, 
-    events, 
-    addEvent, 
-    updateEvent, 
+  const {
+    storeHours,
+    updateDayHours,
+    events,
+    addEvent,
+    updateEvent,
     deleteEvent,
     shiftTemplates,
     updateShiftTemplate,
     weekNumberConfig,
     setWeekNumberConfig
   } = useSettingsStore()
-  
+  const { getCurrentStoreRole } = useAuthStore()
+  const userRole = getCurrentStoreRole()
+  const isOwner = userRole === 'owner'
+
   const [isLoading, setIsLoading] = useState(false)
   const [hasHoursChanged, setHasHoursChanged] = useState(false)
   const [hasTemplatesChanged, setHasTemplatesChanged] = useState(false)
-  const [hasWeekConfigChanged, setHasWeekConfigChanged] = useState(false) // ← AJOUT 1
+  const [hasWeekConfigChanged, setHasWeekConfigChanged] = useState(false)
   const [showEventForm, setShowEventForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CommercialEvent | null>(null)
+
+  // Team management state (owner only)
+  const [members, setMembers] = useState<TeamMember[]>([])
+  const [invitations, setInvitations] = useState<InvitationItem[]>([])
+  const [isLoadingTeam, setIsLoadingTeam] = useState(false)
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isOwner) {
+      loadTeamData()
+    }
+  }, [isOwner])
+
+  const loadTeamData = async () => {
+    setIsLoadingTeam(true)
+    try {
+      const [membersData, invitationsData] = await Promise.all([
+        storesApi.getMembers(),
+        storesApi.getInvitations(),
+      ])
+      setMembers(membersData)
+      setInvitations(invitationsData)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsLoadingTeam(false)
+    }
+  }
+
+  const handleGenerateCode = async () => {
+    try {
+      const data = await storesApi.createInvitation()
+      setGeneratedCode(data.code)
+      toast.success('Code d\'invitation genere')
+      loadTeamData()
+    } catch (error) {
+      toast.error('Erreur lors de la generation du code')
+    }
+  }
+
+  const handleRevokeInvitation = async (code: string) => {
+    try {
+      await storesApi.revokeInvitation(code)
+      toast.success('Invitation revoquee')
+      setGeneratedCode(null)
+      loadTeamData()
+    } catch (error) {
+      toast.error('Erreur')
+    }
+  }
+
+  const handleRemoveMember = async (userId: string, name: string) => {
+    if (!confirm(`Retirer ${name} de la boutique ?`)) return
+    try {
+      await storesApi.removeMember(userId)
+      toast.success('Membre retire')
+      loadTeamData()
+    } catch (error) {
+      toast.error('Erreur')
+    }
+  }
   
   // Event form state
   const [eventName, setEventName] = useState('')
@@ -182,6 +262,108 @@ export function Settings() {
         <h1 className="text-2xl font-bold text-foreground font-heading">Réglages</h1>
       </section>
       
+      {/* Team Management (owner only) */}
+      {isOwner && (
+        <section className="px-6 mb-8">
+          <h2 className="text-lg font-semibold mb-4 font-heading">Equipe</h2>
+          <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50">
+            {isLoadingTeam ? (
+              <div className="flex items-center justify-center py-4">
+                <Icon icon="solar:spinner-bold" className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                {/* Members list */}
+                <div className="space-y-0">
+                  {members.map((member) => (
+                    <div key={member.userId} className="flex items-center justify-between py-3 border-b border-border last:border-b-0">
+                      <div className="flex items-center gap-3">
+                        <div className="size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
+                          {member.firstName?.charAt(0)}{member.lastName?.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-foreground">{member.firstName} {member.lastName}</div>
+                          <div className="text-xs text-muted-foreground">{member.email}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                          member.role === 'owner'
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-secondary text-secondary-foreground'
+                        }`}>
+                          {member.role === 'owner' ? 'Proprietaire' : 'Membre'}
+                        </span>
+                        {member.role !== 'owner' && (
+                          <button
+                            onClick={() => handleRemoveMember(member.userId, `${member.firstName} ${member.lastName}`)}
+                            className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
+                          >
+                            <Icon icon="solar:trash-bin-trash-bold" className="size-4 text-destructive" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Invitation section */}
+                <div className="mt-4 pt-4 border-t border-border">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-foreground">Inviter un collegue</span>
+                    <button
+                      onClick={handleGenerateCode}
+                      className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                    >
+                      Generer un code
+                    </button>
+                  </div>
+
+                  {generatedCode && (
+                    <div className="bg-primary/10 p-4 rounded-lg text-center mb-3">
+                      <div className="text-2xl font-mono font-bold tracking-widest text-primary">{generatedCode}</div>
+                      <p className="text-xs text-muted-foreground mt-2">Valable 7 jours. Partagez ce code avec votre collegue.</p>
+                    </div>
+                  )}
+
+                  {invitations.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-xs text-muted-foreground">Invitations actives :</span>
+                      {invitations.map((inv) => (
+                        <div key={inv.code} className="flex items-center justify-between bg-secondary/50 px-3 py-2 rounded-lg">
+                          <div>
+                            <span className="font-mono text-sm font-semibold tracking-wider">{inv.code}</span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              expire {format(new Date(inv.expiresAt), 'd MMM', { locale: fr })}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleRevokeInvitation(inv.code)}
+                            className="text-xs text-destructive hover:underline"
+                          >
+                            Revoquer
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Member banner */}
+      {!isOwner && userRole === 'member' && (
+        <section className="px-6 mb-4">
+          <div className="bg-secondary/50 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground">
+            <Icon icon="solar:info-circle-bold" className="size-5 shrink-0" />
+            <span>Vous etes membre de cette boutique. Seul le proprietaire peut modifier les reglages.</span>
+          </div>
+        </section>
+      )}
+
       {/* Store Hours */}
       <section className="px-6 mb-8">
         <h2 className="text-lg font-semibold mb-4 font-heading">Horaires de la boutique</h2>
@@ -196,9 +378,10 @@ export function Settings() {
                     {/* Toggle */}
                     <button
                       onClick={() => handleDayToggle(dayKey)}
+                      disabled={!isOwner}
                       className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${
                         dayHours.isOpen ? 'bg-primary' : 'bg-border'
-                      }`}
+                      } ${!isOwner ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
                       <div 
                         className={`absolute top-0.5 left-0.5 size-5 bg-white rounded-full transition-transform shadow-sm ${
@@ -233,17 +416,19 @@ export function Settings() {
             })}
           </div>
           
-          <button 
-            onClick={handleSaveHours}
-            disabled={isLoading || !hasHoursChanged}
-            className={`w-full mt-6 py-3 px-4 rounded-xl font-semibold shadow-sm transition-all ${
-              hasHoursChanged 
-                ? 'bg-primary text-primary-foreground active:scale-95' 
-                : 'bg-muted text-muted-foreground cursor-not-allowed'
-            }`}
-          >
-            {isLoading ? 'Enregistrement...' : hasHoursChanged ? 'Enregistrer' : 'Enregistré ✓'}
-          </button>
+          {isOwner && (
+            <button
+              onClick={handleSaveHours}
+              disabled={isLoading || !hasHoursChanged}
+              className={`w-full mt-6 py-3 px-4 rounded-xl font-semibold shadow-sm transition-all ${
+                hasHoursChanged
+                  ? 'bg-primary text-primary-foreground active:scale-95'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
+              }`}
+            >
+              {isLoading ? 'Enregistrement...' : hasHoursChanged ? 'Enregistrer' : 'Enregistre'}
+            </button>
+          )}
         </div>
       </section>
       
@@ -292,17 +477,19 @@ export function Settings() {
             ))}
           </div>
           
-          <button 
-            onClick={() => setHasTemplatesChanged(false)}
-            disabled={!hasTemplatesChanged}
-            className={`w-full mt-6 py-3 px-4 rounded-xl font-semibold shadow-sm transition-all ${
-              hasTemplatesChanged 
-                ? 'bg-primary text-primary-foreground active:scale-95' 
-                : 'bg-muted text-muted-foreground cursor-not-allowed'
-            }`}
-          >
-            {hasTemplatesChanged ? 'Enregistrer' : 'Enregistré ✓'}
-          </button>
+          {isOwner && (
+            <button
+              onClick={() => setHasTemplatesChanged(false)}
+              disabled={!hasTemplatesChanged}
+              className={`w-full mt-6 py-3 px-4 rounded-xl font-semibold shadow-sm transition-all ${
+                hasTemplatesChanged
+                  ? 'bg-primary text-primary-foreground active:scale-95'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
+              }`}
+            >
+              {hasTemplatesChanged ? 'Enregistrer' : 'Enregistre'}
+            </button>
+          )}
         </div>
       </section>
       
@@ -349,7 +536,7 @@ export function Settings() {
           </div>
           
           {/* ← AJOUT 5 : Bouton enregistrer */}
-          {hasWeekConfigChanged && (
+          {isOwner && hasWeekConfigChanged && (
             <div className="mt-4 flex justify-end">
               <button
                 onClick={handleSaveWeekConfig}
@@ -392,29 +579,35 @@ export function Settings() {
                     className="size-3 rounded-full" 
                     style={{ background: event.color }}
                   />
-                  <button 
-                    onClick={() => handleEditEvent(event)}
-                    className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
-                  >
-                    <Icon icon="solar:pen-bold" className="size-5 text-muted-foreground" />
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteEvent(event)}
-                    className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
-                  >
-                    <Icon icon="solar:trash-bin-trash-bold" className="size-5 text-destructive" />
-                  </button>
+                  {isOwner && (
+                    <>
+                      <button
+                        onClick={() => handleEditEvent(event)}
+                        className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
+                      >
+                        <Icon icon="solar:pen-bold" className="size-5 text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteEvent(event)}
+                        className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
+                      >
+                        <Icon icon="solar:trash-bin-trash-bold" className="size-5 text-destructive" />
+                      </button>
+                    </>
+                  )}
                 </div>
               ))
             )}
             
-            <button 
-              onClick={() => setShowEventForm(true)}
-              className="w-full py-2.5 px-4 bg-secondary text-secondary-foreground rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-secondary/80 transition-colors"
-            >
-              <Icon icon="solar:add-circle-bold" className="size-5" />
-              Ajouter un événement
-            </button>
+            {isOwner && (
+              <button
+                onClick={() => setShowEventForm(true)}
+                className="w-full py-2.5 px-4 bg-secondary text-secondary-foreground rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-secondary/80 transition-colors"
+              >
+                <Icon icon="solar:add-circle-bold" className="size-5" />
+                Ajouter un evenement
+              </button>
+            )}
           </div>
         </div>
         

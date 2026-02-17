@@ -80,9 +80,9 @@ const weekNumberConfigSchema = new mongoose.Schema({
 }, { _id: false })
 
 const settingsSchema = new mongoose.Schema({
-  userId: {
+  storeId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Store',
     required: true,
     unique: true,
   },

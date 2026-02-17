@@ -74,7 +74,6 @@ const timesheetSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
   },
   storeId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -114,10 +113,7 @@ const timesheetSchema = new mongoose.Schema({
 })
 
 // Index unique par employé par semaine par boutique
-timesheetSchema.index({ userId: 1, storeId: 1, employeeId: 1, weekStart: 1 }, { unique: true })
-
-// Index pour requêtes par mois
-timesheetSchema.index({ userId: 1, storeId: 1, employeeId: 1, weekStart: 1 })
+timesheetSchema.index({ storeId: 1, employeeId: 1, weekStart: 1 }, { unique: true })
 
 // Méthode pour recalculer les totaux
 timesheetSchema.methods.recalculateTotals = function() {

@@ -318,12 +318,20 @@ export function Account() {
                   ) : (
                     <span className="font-medium text-foreground">{store.name}</span>
                   )}
-                  
+
                   {store._id === user.currentStoreId && (
                     <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs font-medium rounded">
                       Active
                     </span>
                   )}
+
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                    store.role === 'owner'
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-secondary text-secondary-foreground'
+                  }`}>
+                    {store.role === 'owner' ? 'Proprietaire' : 'Membre'}
+                  </span>
                 </div>
                 
                 <div className="flex items-center gap-2">
@@ -347,7 +355,7 @@ export function Account() {
                         <Icon icon="solar:close-circle-bold" className="size-5" />
                       </button>
                     </>
-                  ) : (
+                  ) : store.role === 'owner' ? (
                     <button
                       onClick={() => {
                         setEditingStoreId(store._id)
@@ -357,7 +365,7 @@ export function Account() {
                     >
                       <Icon icon="solar:pen-bold" className="size-5" />
                     </button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             ))}

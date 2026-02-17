@@ -44,27 +44,33 @@ export const authApi = {
     const { data } = await api.post('/auth/login', { email, password })
     return data
   },
-  
+
   register: async (userData: {
     email: string
     password: string
     firstName: string
     lastName: string
-    store1: string
+    store1?: string
     store2?: string
+    invitationCode?: string
   }) => {
     const { data } = await api.post('/auth/register', userData)
     return data
   },
-  
+
   me: async () => {
     const { data } = await api.get('/auth/me')
     return data
   },
-  
+
   switchStore: async (storeId: string) => {
     const { data } = await api.put('/auth/switch-store', { storeId })
     return data
+  },
+
+  checkInvitationCode: async (code: string) => {
+    const { data } = await api.get(`/auth/invitation-info/${code}`)
+    return data as { storeName: string }
   },
 }
 
@@ -74,12 +80,12 @@ export const employeesApi = {
     const { data } = await api.get('/employees')
     return data
   },
-  
+
   getById: async (id: string) => {
     const { data } = await api.get(`/employees/${id}`)
     return data
   },
-  
+
   create: async (employeeData: {
     firstName: string
     lastName: string
@@ -92,7 +98,7 @@ export const employeesApi = {
     const { data } = await api.post('/employees', employeeData)
     return data
   },
-  
+
   update: async (id: string, employeeData: Partial<{
     firstName: string
     lastName: string
@@ -105,7 +111,7 @@ export const employeesApi = {
     const { data } = await api.put(`/employees/${id}`, employeeData)
     return data
   },
-  
+
   delete: async (id: string) => {
     const { data } = await api.delete(`/employees/${id}`)
     return data
@@ -118,7 +124,7 @@ export const planningApi = {
     const { data } = await api.get(`/planning?weekStart=${weekStart}`)
     return data
   },
-  
+
   createOrUpdate: async (planningData: {
     weekStart: string
     shifts: Array<{
@@ -131,7 +137,7 @@ export const planningApi = {
     const { data } = await api.post('/planning', planningData)
     return data
   },
-  
+
   duplicate: async (sourceWeekStart: string, targetWeekStart: string) => {
     const { data } = await api.post('/planning/duplicate', {
       sourceWeekStart,
@@ -139,7 +145,7 @@ export const planningApi = {
     })
     return data
   },
-  
+
   delete: async (weekStart: string) => {
     const { data } = await api.delete(`/planning?weekStart=${weekStart}`)
     return data
@@ -152,22 +158,22 @@ export const settingsApi = {
     const { data } = await api.get('/settings/store-hours')
     return data
   },
-  
+
   updateStoreHours: async (storeHours: StoreHours) => {
     const { data } = await api.put('/settings/store-hours', storeHours)
     return data
   },
-  
+
   updateWeekNumberConfig: async (config: { referenceDate: string; referenceWeekNumber: number }) => {
     const { data } = await api.put('/settings/week-number-config', config)
     return data
   },
-  
+
   getEvents: async () => {
     const { data } = await api.get('/settings/events')
     return data
   },
-  
+
   createEvent: async (eventData: {
     name: string
     emoji: string
@@ -178,7 +184,7 @@ export const settingsApi = {
     const { data } = await api.post('/settings/events', eventData)
     return data
   },
-  
+
   updateEvent: async (id: string, eventData: Partial<{
     name: string
     emoji: string
@@ -189,17 +195,17 @@ export const settingsApi = {
     const { data } = await api.put(`/settings/events/${id}`, eventData)
     return data
   },
-  
+
   deleteEvent: async (id: string) => {
     const { data } = await api.delete(`/settings/events/${id}`)
     return data
   },
-  
+
   getShiftTemplates: async () => {
     const { data } = await api.get('/settings/shift-templates')
     return data
   },
-  
+
   updateShiftTemplates: async (templates: Array<{
     name: string
     startTime: string
@@ -208,7 +214,7 @@ export const settingsApi = {
     const { data } = await api.put('/settings/shift-templates', templates)
     return data
   },
-  
+
   getWeekNumberConfig: async () => {
     const { data } = await api.get('/settings/week-number-config')
     return data
@@ -217,33 +223,28 @@ export const settingsApi = {
 
 // Timesheets API
 export const timesheetsApi = {
-  // Valider le planning et créer les timesheets
   validatePlanning: async (weekStart: string) => {
     const { data } = await api.post('/timesheets/validate', { weekStart })
     return data
   },
 
-  // Dévalider le planning et supprimer les timesheets
   unvalidatePlanning: async (weekStart: string) => {
     const { data } = await api.post('/timesheets/unvalidate', { weekStart })
     return data
   },
-  
-  // Récupérer les timesheets d'une semaine
+
   getByWeek: async (weekStart: string) => {
     const { data } = await api.get('/timesheets', { params: { weekStart } })
     return data
   },
-  
-  // Récupérer les timesheets d'un employé
+
   getByEmployee: async (employeeId: string, month?: string, year?: string) => {
     const { data } = await api.get(`/timesheets/employee/${employeeId}`, {
       params: { month, year }
     })
     return data
   },
-  
-  // Mettre à jour les heures réalisées d'un jour
+
   updateDay: async (employeeId: string, payload: {
     weekStart: string
     date: string
@@ -255,12 +256,50 @@ export const timesheetsApi = {
     const { data } = await api.put(`/timesheets/${employeeId}/day`, payload)
     return data
   },
-  
-  // Récap mensuel d'un employé
+
   getSummary: async (employeeId: string, year?: number, month?: number) => {
     const { data } = await api.get(`/timesheets/summary/${employeeId}`, {
       params: { year, month }
     })
+    return data
+  },
+}
+
+// Stores API (invitations & members)
+export const storesApi = {
+  getMembers: async () => {
+    const { data } = await api.get('/stores/current/members')
+    return data as Array<{
+      userId: string
+      firstName: string
+      lastName: string
+      email: string
+      role: 'owner' | 'member'
+      joinedAt: string
+    }>
+  },
+
+  createInvitation: async () => {
+    const { data } = await api.post('/stores/invitations')
+    return data as { code: string; expiresAt: string }
+  },
+
+  getInvitations: async () => {
+    const { data } = await api.get('/stores/invitations')
+    return data as Array<{
+      code: string
+      expiresAt: string
+      createdAt: string
+    }>
+  },
+
+  revokeInvitation: async (code: string) => {
+    const { data } = await api.delete(`/stores/invitations/${code}`)
+    return data
+  },
+
+  removeMember: async (userId: string) => {
+    const { data } = await api.delete(`/stores/members/${userId}`)
     return data
   },
 }

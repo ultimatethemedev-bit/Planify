@@ -13,18 +13,18 @@ router.use(auth)
 const calculateMinutes = (startTime, endTime) => {
   if (!startTime || !endTime) return 0
   if (startTime === 'CP' || startTime === 'AM' || startTime === '00:00' && endTime === '00:00') return 0
-  
+
   const [startH, startM] = startTime.split(':').map(Number)
   const [endH, endM] = endTime.split(':').map(Number)
-  
+
   let startMinutes = startH * 60 + startM
   let endMinutes = endH * 60 + endM
-  
+
   // Gestion passage minuit
   if (endMinutes < startMinutes) {
     endMinutes += 24 * 60
   }
-  
+
   return endMinutes - startMinutes
 }
 
@@ -40,33 +40,31 @@ const getDayType = (startTime, endTime) => {
 router.post('/validate', async (req, res) => {
   try {
     const { weekStart } = req.body
-    
-    if (!req.user.currentStoreId) {
+
+    if (!req.storeId) {
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
     }
-    
+
     // Récupérer le planning de la semaine
     const planning = await Planning.findOne({
-      userId: req.userId,
-      storeId: req.user.currentStoreId,
+      storeId: req.storeId,
       weekStart,
     })
-    
+
     if (!planning) {
       return res.status(404).json({ message: 'Planning non trouvé' })
     }
-    
+
     if (planning.isValidated) {
       return res.status(400).json({ message: 'Planning déjà validé' })
     }
-    
+
     // Récupérer tous les employés actifs
     const employees = await Employee.find({
-      userId: req.userId,
-      storeId: req.user.currentStoreId,
+      storeId: req.storeId,
       isActive: true,
     })
-    
+
     // Générer les dates de la semaine
     const weekDates = []
     const startDate = new Date(weekStart)
@@ -75,24 +73,22 @@ router.post('/validate', async (req, res) => {
       date.setDate(startDate.getDate() + i)
       weekDates.push(date.toISOString().split('T')[0])
     }
-    
+
     // Créer un timesheet pour chaque employé
     const timesheets = []
-    
+
     for (const employee of employees) {
-      // Récupérer les shifts de cet employé pour cette semaine
       const employeeShifts = planning.shifts.filter(
         s => s.employeeId.toString() === employee._id.toString()
       )
-      
-      // Créer les entrées par jour
+
       const days = weekDates.map(date => {
         const shift = employeeShifts.find(s => s.date === date)
-        
+
         if (shift) {
           const type = getDayType(shift.startTime, shift.endTime)
           const minutes = calculateMinutes(shift.startTime, shift.endTime)
-          
+
           return {
             date,
             type,
@@ -107,8 +103,7 @@ router.post('/validate', async (req, res) => {
             modifications: [],
           }
         }
-        
-        // Pas de shift = repos
+
         return {
           date,
           type: 'rest',
@@ -123,8 +118,7 @@ router.post('/validate', async (req, res) => {
           modifications: [],
         }
       })
-      
-      // Calculer les totaux
+
       let totalPlanned = 0
       let totalActual = 0
       days.forEach(day => {
@@ -133,18 +127,15 @@ router.post('/validate', async (req, res) => {
           totalActual += day.actualMinutes
         }
       })
-      
-      // Créer ou mettre à jour le timesheet
+
       const timesheet = await Timesheet.findOneAndUpdate(
         {
-          userId: req.userId,
-          storeId: req.user.currentStoreId,
+          storeId: req.storeId,
           employeeId: employee._id,
           weekStart,
         },
         {
-          userId: req.userId,
-          storeId: req.user.currentStoreId,
+          storeId: req.storeId,
           employeeId: employee._id,
           weekStart,
           weekEnd: planning.weekEnd,
@@ -155,15 +146,15 @@ router.post('/validate', async (req, res) => {
         },
         { upsert: true, new: true }
       )
-      
+
       timesheets.push(timesheet)
     }
-    
+
     // Marquer le planning comme validé
     planning.isValidated = true
     planning.validatedAt = new Date()
     await planning.save()
-    
+
     res.json({
       message: 'Planning validé',
       planning,
@@ -180,14 +171,12 @@ router.post('/unvalidate', async (req, res) => {
   try {
     const { weekStart } = req.body
 
-    if (!req.user.currentStoreId) {
+    if (!req.storeId) {
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
     }
 
-    // Récupérer le planning de la semaine
     const planning = await Planning.findOne({
-      userId: req.userId,
-      storeId: req.user.currentStoreId,
+      storeId: req.storeId,
       weekStart,
     })
 
@@ -199,23 +188,16 @@ router.post('/unvalidate', async (req, res) => {
       return res.status(400).json({ message: 'Planning non validé' })
     }
 
-    // Récupérer les timesheets pour vérifier s'il y a des modifications
     const timesheets = await Timesheet.find({
-      userId: req.userId,
-      storeId: req.user.currentStoreId,
+      storeId: req.storeId,
       weekStart,
     })
 
-    // Vérifier si des heures réalisées ont été modifiées
     let hasModifications = false
     let modificationsCount = 0
 
     for (const timesheet of timesheets) {
       for (const day of timesheet.days) {
-        // Considérer comme modifié si :
-        // - Les heures réalisées diffèrent des heures planifiées
-        // - Une note a été ajoutée
-        // - L'historique de modifications n'est pas vide
         if (day.type === 'work') {
           if (day.actualStart !== day.plannedStart || day.actualEnd !== day.plannedEnd) {
             hasModifications = true
@@ -232,14 +214,11 @@ router.post('/unvalidate', async (req, res) => {
       }
     }
 
-    // Supprimer les timesheets
     await Timesheet.deleteMany({
-      userId: req.userId,
-      storeId: req.user.currentStoreId,
+      storeId: req.storeId,
       weekStart,
     })
 
-    // Dévalider le planning
     planning.isValidated = false
     planning.validatedAt = null
     await planning.save()
@@ -260,17 +239,16 @@ router.post('/unvalidate', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { weekStart } = req.query
-    
-    if (!req.user.currentStoreId) {
+
+    if (!req.storeId) {
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
     }
-    
+
     const timesheets = await Timesheet.find({
-      userId: req.userId,
-      storeId: req.user.currentStoreId,
+      storeId: req.storeId,
       weekStart,
     })
-    
+
     res.json(timesheets)
   } catch (error) {
     console.error('Get timesheets error:', error)
@@ -278,32 +256,29 @@ router.get('/', async (req, res) => {
   }
 })
 
-// GET /timesheets/employee/:employeeId - Récupérer les timesheets d'un employé (pour historique)
+// GET /timesheets/employee/:employeeId - Récupérer les timesheets d'un employé
 router.get('/employee/:employeeId', async (req, res) => {
   try {
     const { employeeId } = req.params
     const { month, year } = req.query
-    
-    if (!req.user.currentStoreId) {
+
+    if (!req.storeId) {
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
     }
-    
-    // Construire la requête
+
     const query = {
-      userId: req.userId,
-      storeId: req.user.currentStoreId,
+      storeId: req.storeId,
       employeeId,
     }
-    
-    // Si mois/année spécifiés, filtrer
+
     if (month && year) {
       const startOfMonth = `${year}-${month.padStart(2, '0')}-01`
       const endOfMonth = new Date(year, month, 0).toISOString().split('T')[0]
       query.weekStart = { $gte: startOfMonth, $lte: endOfMonth }
     }
-    
+
     const timesheets = await Timesheet.find(query).sort({ weekStart: -1 })
-    
+
     res.json(timesheets)
   } catch (error) {
     console.error('Get employee timesheets error:', error)
@@ -316,33 +291,30 @@ router.put('/:employeeId/day', async (req, res) => {
   try {
     const { employeeId } = req.params
     const { weekStart, date, actualStart, actualEnd, note, type } = req.body
-    
-    if (!req.user.currentStoreId) {
+
+    if (!req.storeId) {
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
     }
-    
+
     const timesheet = await Timesheet.findOne({
-      userId: req.userId,
-      storeId: req.user.currentStoreId,
+      storeId: req.storeId,
       employeeId,
       weekStart,
     })
-    
+
     if (!timesheet) {
       return res.status(404).json({ message: 'Timesheet non trouvé' })
     }
-    
-    // Trouver le jour à modifier
+
     const dayIndex = timesheet.days.findIndex(d => d.date === date)
     if (dayIndex === -1) {
       return res.status(404).json({ message: 'Jour non trouvé' })
     }
-    
+
     const day = timesheet.days[dayIndex]
-    
-    // Enregistrer les modifications dans l'historique
+
     const modifications = []
-    
+
     if (type && type !== day.type) {
       modifications.push({
         changedAt: new Date(),
@@ -352,7 +324,7 @@ router.put('/:employeeId/day', async (req, res) => {
       })
       day.type = type
     }
-    
+
     if (actualStart !== undefined && actualStart !== day.actualStart) {
       modifications.push({
         changedAt: new Date(),
@@ -362,7 +334,7 @@ router.put('/:employeeId/day', async (req, res) => {
       })
       day.actualStart = actualStart
     }
-    
+
     if (actualEnd !== undefined && actualEnd !== day.actualEnd) {
       modifications.push({
         changedAt: new Date(),
@@ -372,7 +344,7 @@ router.put('/:employeeId/day', async (req, res) => {
       })
       day.actualEnd = actualEnd
     }
-    
+
     if (note !== undefined) {
       if (note !== day.note) {
         modifications.push({
@@ -384,13 +356,11 @@ router.put('/:employeeId/day', async (req, res) => {
       }
       day.note = note
     }
-    
-    // Ajouter les modifications à l'historique
+
     if (modifications.length > 0) {
       day.modifications = [...(day.modifications || []), ...modifications]
     }
-    
-    // Recalculer les minutes si c'est du travail
+
     if (day.type === 'work') {
       day.actualMinutes = calculateMinutes(day.actualStart, day.actualEnd)
       day.deltaMinutes = day.actualMinutes - day.plannedMinutes
@@ -398,15 +368,13 @@ router.put('/:employeeId/day', async (req, res) => {
       day.actualMinutes = 0
       day.deltaMinutes = -day.plannedMinutes
     }
-    
-    // Sauvegarder le jour modifié
+
     timesheet.days[dayIndex] = day
-    
-    // Recalculer les totaux
+
     timesheet.recalculateTotals()
-    
+
     await timesheet.save()
-    
+
     res.json(timesheet)
   } catch (error) {
     console.error('Update timesheet day error:', error)
@@ -419,59 +387,50 @@ router.get('/summary/:employeeId', async (req, res) => {
   try {
     const { employeeId } = req.params
     const { year, month } = req.query
-    
-    if (!req.user.currentStoreId) {
+
+    if (!req.storeId) {
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
     }
-    
-    // Par défaut, mois en cours
+
     const targetYear = year || new Date().getFullYear()
     const targetMonth = month || (new Date().getMonth() + 1)
-    
-    // Récupérer l'employé
+
     const employee = await Employee.findById(employeeId)
     if (!employee) {
       return res.status(404).json({ message: 'Employé non trouvé' })
     }
-    
-    // Récupérer les timesheets du mois
+
     const startOfMonth = `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`
     const lastDay = new Date(targetYear, targetMonth, 0).getDate()
     const endOfMonth = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${lastDay}`
-    
+
     const timesheets = await Timesheet.find({
-      userId: req.userId,
-      storeId: req.user.currentStoreId,
+      storeId: req.storeId,
       employeeId,
       weekStart: { $lte: endOfMonth },
       weekEnd: { $gte: startOfMonth },
     }).sort({ weekStart: 1 })
-    
-    // Calculer les totaux du mois
+
     let totalPlanned = 0
     let totalActual = 0
     let totalCP = 0
     let totalAM = 0
-    
+
     const weeklySummaries = timesheets.map(ts => {
-      // Filtrer les jours qui sont dans le mois (ancienne logique = correcte pour la paie)
       const daysInMonth = ts.days.filter(d => {
         return d.date >= startOfMonth && d.date <= endOfMonth
       })
-      
-      // Vérifier si la semaine chevauche le mois (pour afficher l'info)
+
       const allDays = ts.days
       const hasOverlap = allDays.some(d => d.date < startOfMonth || d.date > endOfMonth)
-      
-      // Compter combien de jours sont dans le mois
       const daysInMonthCount = daysInMonth.length
-      
+
       let weekPlanned = 0
       let weekActual = 0
       let weekCP = 0
       let weekAM = 0
       const notes = []
-      
+
       daysInMonth.forEach(day => {
         if (day.type === 'work') {
           weekPlanned += day.plannedMinutes
@@ -481,27 +440,24 @@ router.get('/summary/:employeeId', async (req, res) => {
         } else if (day.type === 'am') {
           weekAM++
         }
-        
-        // Ajouter le jour si :
-        // 1. Il y a une note OU
-        // 2. Il y a un delta (heures modifiées) ET des heures réalisées ont été saisies
+
         const dayDelta = day.actualMinutes - day.plannedMinutes
         const hasActualHours = day.actualStart && day.actualEnd
-        
+
         if (day.note || (dayDelta !== 0 && hasActualHours)) {
-          notes.push({ 
-            date: day.date, 
-            note: day.note || '', 
-            delta: dayDelta 
+          notes.push({
+            date: day.date,
+            note: day.note || '',
+            delta: dayDelta
           })
         }
       })
-      
+
       totalPlanned += weekPlanned
       totalActual += weekActual
       totalCP += weekCP
       totalAM += weekAM
-      
+
       return {
         weekStart: ts.weekStart,
         weekEnd: ts.weekEnd,
@@ -511,15 +467,14 @@ router.get('/summary/:employeeId', async (req, res) => {
         cpDays: weekCP,
         amDays: weekAM,
         notes,
-        overlapsMonth: hasOverlap, // Indique si la semaine chevauche
-        daysInMonthCount, // Nombre de jours dans le mois
+        overlapsMonth: hasOverlap,
+        daysInMonthCount,
       }
     })
-    
-    // Delta total
+
     const totalDelta = totalActual - totalPlanned
-    const contractMinutes = employee.weeklyHours * 60 * 4 // ~4 semaines
-    
+    const contractMinutes = employee.weeklyHours * 60 * 4
+
     res.json({
       employee: {
         _id: employee._id,
@@ -535,7 +490,6 @@ router.get('/summary/:employeeId', async (req, res) => {
         totalDeltaMinutes: totalDelta,
         totalCPDays: totalCP,
         totalAMDays: totalAM,
-        // Heures supp = au-delà du contrat mensuel
         overtime: Math.max(0, totalActual - contractMinutes),
       },
       weeks: weeklySummaries,

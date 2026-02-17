@@ -14,6 +14,8 @@ import planningRoutes from './routes/planning.js'
 import settingsRoutes from './routes/settings.js'
 import timesheetsRoutes from './routes/timesheets.js'
 import userRoutes from './routes/user.js'
+import storesRoutes from './routes/stores.js'
+import { runMigration } from './migration.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -38,6 +40,7 @@ app.use('/api/planning', planningRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/timesheets', timesheetsRoutes)
 app.use('/api/user', userRoutes)
+app.use('/api/stores', storesRoutes)
 
 // Error handler
 app.use((err, req, res, next) => {
@@ -55,8 +58,9 @@ app.use((req, res) => {
 
 // Connect to MongoDB and start server
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log('✅ Connected to MongoDB')
+    await runMigration()
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`)
     })

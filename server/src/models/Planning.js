@@ -24,7 +24,6 @@ const planningSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
   },
   storeId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -53,6 +52,6 @@ const planningSchema = new mongoose.Schema({
 })
 
 // Compound index for unique planning per user per store per week
-planningSchema.index({ userId: 1, storeId: 1, weekStart: 1 }, { unique: true })
+planningSchema.index({ storeId: 1, weekStart: 1 }, { unique: true })
 
 export default mongoose.model('Planning', planningSchema)

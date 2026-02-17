@@ -1,6 +1,7 @@
 import express from 'express'
 import { body, validationResult } from 'express-validator'
 import User from '../models/User.js'
+import Store from '../models/Store.js'
 import { auth } from '../middleware/auth.js'
 import bcrypt from 'bcryptjs'
 
@@ -13,12 +14,22 @@ router.use(auth)
 const handleValidation = (req, res, next) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       message: errors.array()[0].msg,
-      errors: errors.array() 
+      errors: errors.array()
     })
   }
   next()
+}
+
+// Helper: build stores array with roles for a user
+const getUserStores = async (userId) => {
+  const stores = await Store.find({ 'members.userId': userId })
+  return stores.map(s => ({
+    _id: s._id,
+    name: s.name,
+    role: s.members.find(m => m.userId.toString() === userId.toString())?.role,
+  }))
 }
 
 // PUT /api/user/profile - Modifier profil (nom, prénom, email)
@@ -30,24 +41,27 @@ router.put('/profile', [
 ], async (req, res) => {
   try {
     const { firstName, lastName, email } = req.body
-    
-    // Vérifier si l'email est déjà utilisé par un autre utilisateur
+
     if (email !== req.user.email) {
       const existingUser = await User.findOne({ email })
       if (existingUser) {
         return res.status(400).json({ message: 'Cet email est déjà utilisé' })
       }
     }
-    
-    // Mettre à jour l'utilisateur
+
     req.user.firstName = firstName
     req.user.lastName = lastName
     req.user.email = email
     await req.user.save()
-    
+
+    const stores = await getUserStores(req.userId)
+
     res.json({
       message: 'Profil mis à jour avec succès',
-      user: req.user.toJSON(),
+      user: {
+        ...req.user.toJSON(),
+        stores,
+      },
     })
   } catch (error) {
     console.error('Update profile error:', error)
@@ -69,17 +83,15 @@ router.put('/password', [
 ], async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body
-    
-    // Vérifier l'ancien mot de passe
+
     const isMatch = await bcrypt.compare(oldPassword, req.user.password)
     if (!isMatch) {
       return res.status(400).json({ message: 'Ancien mot de passe incorrect' })
     }
-    
-    // Mettre le nouveau mot de passe (le middleware pre('save') va le hasher automatiquement)
+
     req.user.password = newPassword
     await req.user.save()
-    
+
     res.json({ message: 'Mot de passe modifié avec succès' })
   } catch (error) {
     console.error('Update password error:', error)
@@ -87,7 +99,7 @@ router.put('/password', [
   }
 })
 
-// PUT /api/user/stores/:storeId - Renommer une boutique
+// PUT /api/user/stores/:storeId - Renommer une boutique (owner only)
 router.put('/stores/:storeId', [
   body('name').trim().notEmpty().withMessage('Nom de la boutique requis'),
   handleValidation,
@@ -95,20 +107,34 @@ router.put('/stores/:storeId', [
   try {
     const { storeId } = req.params
     const { name } = req.body
-    
-    // Trouver la boutique
-    const store = req.user.stores.id(storeId)
+
+    const store = await Store.findOne({
+      _id: storeId,
+      'members.userId': req.userId,
+    })
+
     if (!store) {
       return res.status(404).json({ message: 'Boutique non trouvée' })
     }
-    
-    // Renommer
+
+    const member = store.members.find(
+      m => m.userId.toString() === req.userId.toString()
+    )
+    if (!member || member.role !== 'owner') {
+      return res.status(403).json({ message: 'Seul le propriétaire peut renommer la boutique' })
+    }
+
     store.name = name
-    await req.user.save()
-    
+    await store.save()
+
+    const stores = await getUserStores(req.userId)
+
     res.json({
       message: 'Boutique renommée avec succès',
-      user: req.user.toJSON(),
+      user: {
+        ...req.user.toJSON(),
+        stores,
+      },
     })
   } catch (error) {
     console.error('Update store error:', error)

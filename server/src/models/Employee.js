@@ -4,7 +4,6 @@ const employeeSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
   },
   storeId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -78,6 +77,6 @@ const employeeSchema = new mongoose.Schema({
 })
 
 // Index for faster queries
-employeeSchema.index({ userId: 1, storeId: 1, isActive: 1 })
+employeeSchema.index({ storeId: 1, isActive: 1 })
 
 export default mongoose.model('Employee', employeeSchema)
