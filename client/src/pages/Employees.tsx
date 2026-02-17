@@ -19,18 +19,21 @@ export function Employees() {
   
   // Fetch employees on mount
   useEffect(() => {
+    let cancelled = false
+
     const fetchEmployees = async () => {
       setLoading(true)
       try {
         const data = await employeesApi.getAll()
-        setEmployees(data)
+        if (!cancelled) setEmployees(data)
       } catch (error) {
-        console.error('Failed to fetch employees:', error)
+        if (!cancelled) console.error('Failed to fetch employees:', error)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     fetchEmployees()
+    return () => { cancelled = true }
   }, [])
   
   // Filter employees by search

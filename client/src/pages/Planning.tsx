@@ -36,31 +36,39 @@ export function Planning() {
   
   // Charger le planning de la semaine actuelle
   useEffect(() => {
+    const abortController = new AbortController()
+
     const fetchPlanning = async () => {
       try {
         setIsLoadingPlanning(true)
         const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd')
         const { planningApi } = await import('../services/api')
         const data = await planningApi.getByWeek(weekStartStr)
+        if (abortController.signal.aborted) return
         setPlanning(data)
-        
+
         // Si le planning est validé, charger les timesheets
         if (data?.isValidated) {
           const timesheetsData = await timesheetsApi.getByWeek(weekStartStr)
+          if (abortController.signal.aborted) return
           setTimesheets(timesheetsData)
         } else {
           setTimesheets([])
         }
       } catch (error) {
+        if (abortController.signal.aborted) return
         console.error('Erreur chargement planning:', error)
         setPlanning(null)
         setTimesheets([])
       } finally {
-        setIsLoadingPlanning(false)
+        if (!abortController.signal.aborted) {
+          setIsLoadingPlanning(false)
+        }
       }
     }
-    
+
     fetchPlanning()
+    return () => abortController.abort()
   }, [currentWeekStart, setPlanning, setTimesheets])
   
   // Fonction pour valider le planning
@@ -319,16 +327,15 @@ export function Planning() {
       
       // Ajouter un titre
       const title = document.createElement('div')
-      title.innerHTML = `
-        <div style="text-align: center; margin-bottom: 24px;">
-          <h1 style="font-size: 28px; font-weight: bold; color: #0F172A; margin: 0 0 8px 0; font-family: Inter, sans-serif;">
-            Planning - Semaine ${weekNumber}
-          </h1>
-          <p style="font-size: 16px; color: #64748B; margin: 0; font-family: Inter, sans-serif;">
-            ${format(currentWeekStart, 'd MMMM', { locale: fr })} - ${format(weekEnd, 'd MMMM yyyy', { locale: fr })}
-          </p>
-        </div>
-      `
+      title.style.cssText = 'text-align: center; margin-bottom: 24px;'
+      const h1 = document.createElement('h1')
+      h1.style.cssText = 'font-size: 28px; font-weight: bold; color: #0F172A; margin: 0 0 8px 0; font-family: Inter, sans-serif;'
+      h1.textContent = `Planning - Semaine ${weekNumber}`
+      const p = document.createElement('p')
+      p.style.cssText = 'font-size: 16px; color: #64748B; margin: 0; font-family: Inter, sans-serif;'
+      p.textContent = `${format(currentWeekStart, 'd MMMM', { locale: fr })} - ${format(weekEnd, 'd MMMM yyyy', { locale: fr })}`
+      title.appendChild(h1)
+      title.appendChild(p)
       exportContainer.appendChild(title)
       
       // Cloner le planning grid

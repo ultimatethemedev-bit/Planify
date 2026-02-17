@@ -1,7 +1,7 @@
 import express from 'express'
 import { body, validationResult } from 'express-validator'
 import Employee from '../models/Employee.js'
-import { auth } from '../middleware/auth.js'
+import { auth, validateObjectIds } from '../middleware/auth.js'
 
 const router = express.Router()
 
@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
 })
 
 // Get single employee
-router.get('/:id', async (req, res) => {
+router.get('/:id', validateObjectIds('id'), async (req, res) => {
   try {
     const employee = await Employee.findOne({
       _id: req.params.id,
@@ -74,8 +74,9 @@ router.post('/', [
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
     }
 
+    const { firstName, lastName, email, phone, contractType, weeklyHours, color } = req.body
     const employee = new Employee({
-      ...req.body,
+      firstName, lastName, email, phone, contractType, weeklyHours, color,
       storeId: req.storeId,
     })
     await employee.save()
@@ -88,11 +89,17 @@ router.post('/', [
 })
 
 // Update employee
-router.put('/:id', async (req, res) => {
+router.put('/:id', validateObjectIds('id'), async (req, res) => {
   try {
+    const allowedFields = ['firstName', 'lastName', 'email', 'phone', 'contractType', 'weeklyHours', 'color']
+    const updateData = {}
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) updateData[field] = req.body[field]
+    }
+
     const employee = await Employee.findOneAndUpdate(
       { _id: req.params.id, storeId: req.storeId },
-      { $set: req.body },
+      { $set: updateData },
       { new: true, runValidators: true }
     )
 
@@ -108,7 +115,7 @@ router.put('/:id', async (req, res) => {
 })
 
 // Delete employee (soft delete)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', validateObjectIds('id'), async (req, res) => {
   try {
     const employee = await Employee.findOneAndUpdate(
       { _id: req.params.id, storeId: req.storeId },

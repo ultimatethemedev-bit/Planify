@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken'
+import mongoose from 'mongoose'
 import User from '../models/User.js'
 import Store from '../models/Store.js'
 
@@ -59,6 +60,17 @@ export const requireRole = (role) => (req, res, next) => {
     return res.status(403).json({
       message: 'Accès refusé. Droits insuffisants.',
     })
+  }
+  next()
+}
+
+// Validate that specified route params are valid ObjectIds
+export const validateObjectIds = (...paramNames) => (req, res, next) => {
+  for (const param of paramNames) {
+    const value = req.params[param]
+    if (value && !mongoose.Types.ObjectId.isValid(value)) {
+      return res.status(400).json({ message: `Paramètre invalide: ${param}` })
+    }
   }
   next()
 }

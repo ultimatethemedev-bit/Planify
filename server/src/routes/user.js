@@ -2,7 +2,7 @@ import express from 'express'
 import { body, validationResult } from 'express-validator'
 import User from '../models/User.js'
 import Store from '../models/Store.js'
-import { auth } from '../middleware/auth.js'
+import { auth, validateObjectIds } from '../middleware/auth.js'
 import bcrypt from 'bcryptjs'
 
 const router = express.Router()
@@ -100,7 +100,7 @@ router.put('/password', [
 })
 
 // PUT /api/user/stores/:storeId - Renommer une boutique (owner only)
-router.put('/stores/:storeId', [
+router.put('/stores/:storeId', validateObjectIds('storeId'), [
   body('name').trim().notEmpty().withMessage('Nom de la boutique requis'),
   handleValidation,
 ], async (req, res) => {

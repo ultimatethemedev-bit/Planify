@@ -1,7 +1,7 @@
 import express from 'express'
 import { body, validationResult } from 'express-validator'
 import Settings from '../models/Settings.js'
-import { auth, requireRole } from '../middleware/auth.js'
+import { auth, requireRole, validateObjectIds } from '../middleware/auth.js'
 
 const router = express.Router()
 
@@ -31,9 +31,21 @@ router.get('/store-hours', async (req, res) => {
 // Update store hours (owner only)
 router.put('/store-hours', requireRole('owner'), async (req, res) => {
   try {
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    const storeHours = {}
+    for (const day of days) {
+      if (req.body[day]) {
+        storeHours[day] = {
+          isOpen: Boolean(req.body[day].isOpen),
+          openTime: String(req.body[day].openTime || '10:00'),
+          closeTime: String(req.body[day].closeTime || '21:00'),
+        }
+      }
+    }
+
     const settings = await Settings.findOneAndUpdate(
       { storeId: req.storeId },
-      { $set: { storeHours: req.body } },
+      { $set: { storeHours } },
       { new: true, upsert: true }
     )
     res.json(settings.storeHours)
@@ -88,7 +100,7 @@ router.post('/events', requireRole('owner'), [
 })
 
 // Update event (owner only)
-router.put('/events/:id', requireRole('owner'), async (req, res) => {
+router.put('/events/:id', requireRole('owner'), validateObjectIds('id'), async (req, res) => {
   try {
     const settings = await getOrCreateSettings(req.storeId)
 
@@ -100,7 +112,10 @@ router.put('/events/:id', requireRole('owner'), async (req, res) => {
       return res.status(404).json({ message: 'Événement non trouvé' })
     }
 
-    Object.assign(settings.events[eventIndex], req.body)
+    const eventFields = ['name', 'emoji', 'startDate', 'endDate', 'color']
+    for (const field of eventFields) {
+      if (req.body[field] !== undefined) settings.events[eventIndex][field] = req.body[field]
+    }
     await settings.save()
 
     res.json(settings.events[eventIndex])
@@ -111,7 +126,7 @@ router.put('/events/:id', requireRole('owner'), async (req, res) => {
 })
 
 // Delete event (owner only)
-router.delete('/events/:id', requireRole('owner'), async (req, res) => {
+router.delete('/events/:id', requireRole('owner'), validateObjectIds('id'), async (req, res) => {
   try {
     const settings = await Settings.findOneAndUpdate(
       { storeId: req.storeId },
@@ -148,9 +163,18 @@ router.get('/shift-templates', async (req, res) => {
 // Update shift templates (owner only)
 router.put('/shift-templates', requireRole('owner'), async (req, res) => {
   try {
+    if (!Array.isArray(req.body)) {
+      return res.status(400).json({ message: 'Format invalide' })
+    }
+    const shiftTemplates = req.body.map(t => ({
+      name: String(t.name || ''),
+      startTime: String(t.startTime || ''),
+      endTime: String(t.endTime || ''),
+    }))
+
     const settings = await Settings.findOneAndUpdate(
       { storeId: req.storeId },
-      { $set: { shiftTemplates: req.body } },
+      { $set: { shiftTemplates } },
       { new: true, upsert: true }
     )
     res.json(settings.shiftTemplates)
@@ -177,9 +201,14 @@ router.get('/week-number-config', async (req, res) => {
 // Update week number config (owner only)
 router.put('/week-number-config', requireRole('owner'), async (req, res) => {
   try {
+    const weekNumberConfig = {
+      referenceDate: String(req.body.referenceDate || ''),
+      referenceWeekNumber: Number(req.body.referenceWeekNumber) || 1,
+    }
+
     const settings = await Settings.findOneAndUpdate(
       { storeId: req.storeId },
-      { $set: { weekNumberConfig: req.body } },
+      { $set: { weekNumberConfig } },
       { new: true, upsert: true }
     )
     res.json(settings.weekNumberConfig)

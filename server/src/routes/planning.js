@@ -1,6 +1,10 @@
 import express from 'express'
 import Planning from '../models/Planning.js'
-import { auth } from '../middleware/auth.js'
+import { auth, validateObjectIds } from '../middleware/auth.js'
+
+// Validation helpers
+const isValidDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v)
+const isValidTime = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v) || v === 'CP' || v === 'AM' || v === '00:00'
 
 const router = express.Router()
 
@@ -19,8 +23,8 @@ router.get('/', async (req, res) => {
   try {
     const { weekStart } = req.query
 
-    if (!weekStart) {
-      return res.status(400).json({ message: 'weekStart parameter required' })
+    if (!weekStart || !isValidDate(weekStart)) {
+      return res.status(400).json({ message: 'weekStart invalide (format YYYY-MM-DD requis)' })
     }
 
     if (!req.storeId) {
@@ -57,8 +61,8 @@ router.post('/', async (req, res) => {
   try {
     const { weekStart, shifts } = req.body
 
-    if (!weekStart) {
-      return res.status(400).json({ message: 'weekStart required' })
+    if (!weekStart || !isValidDate(weekStart)) {
+      return res.status(400).json({ message: 'weekStart invalide (format YYYY-MM-DD requis)' })
     }
 
     if (!req.storeId) {
@@ -67,13 +71,21 @@ router.post('/', async (req, res) => {
 
     const weekEnd = getWeekEnd(weekStart)
 
+    // Sanitize & validate shifts
+    const sanitizedShifts = (shifts || []).map(s => ({
+      employeeId: s.employeeId,
+      date: s.date,
+      startTime: s.startTime,
+      endTime: s.endTime,
+    }))
+
     // Upsert planning
     const planning = await Planning.findOneAndUpdate(
       { storeId: req.storeId, weekStart },
       {
         $set: {
           weekEnd,
-          shifts: shifts || [],
+          shifts: sanitizedShifts,
         }
       },
       { new: true, upsert: true, runValidators: true }
@@ -91,8 +103,8 @@ router.post('/duplicate', async (req, res) => {
   try {
     const { sourceWeekStart, targetWeekStart } = req.body
 
-    if (!sourceWeekStart || !targetWeekStart) {
-      return res.status(400).json({ message: 'sourceWeekStart and targetWeekStart required' })
+    if (!sourceWeekStart || !isValidDate(sourceWeekStart) || !targetWeekStart || !isValidDate(targetWeekStart)) {
+      return res.status(400).json({ message: 'Dates invalides (format YYYY-MM-DD requis)' })
     }
 
     if (!req.storeId) {
@@ -150,8 +162,8 @@ router.delete('/', async (req, res) => {
   try {
     const { weekStart } = req.query
 
-    if (!weekStart) {
-      return res.status(400).json({ message: 'weekStart parameter required' })
+    if (!weekStart || !isValidDate(weekStart)) {
+      return res.status(400).json({ message: 'weekStart invalide (format YYYY-MM-DD requis)' })
     }
 
     if (!req.storeId) {

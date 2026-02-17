@@ -1,4 +1,5 @@
 import express from 'express'
+import rateLimit from 'express-rate-limit'
 import { body, validationResult } from 'express-validator'
 import User from '../models/User.js'
 import Store from '../models/Store.js'
@@ -8,6 +9,23 @@ import { auth, generateToken } from '../middleware/auth.js'
 import { sendWelcomeEmail } from '../utils/email.js'
 
 const router = express.Router()
+
+// Rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per window
+  message: { message: 'Trop de tentatives, réessayez dans 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 registrations per hour
+  message: { message: 'Trop de créations de compte, réessayez plus tard' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
 
 // Validation middleware
 const handleValidation = (req, res, next) => {
@@ -52,7 +70,7 @@ router.get('/invitation-info/:code', async (req, res) => {
 })
 
 // Register
-router.post('/register', [
+router.post('/register', registerLimiter, [
   body('email').isEmail().withMessage('Email invalide'),
   body('password').isLength({ min: 6 }).withMessage('Le mot de passe doit contenir au moins 6 caractères'),
   body('firstName').trim().notEmpty().withMessage('Prénom requis'),
@@ -188,7 +206,7 @@ router.post('/register', [
 })
 
 // Login
-router.post('/login', [
+router.post('/login', authLimiter, [
   body('email').isEmail().withMessage('Email invalide'),
   body('password').notEmpty().withMessage('Mot de passe requis'),
   handleValidation,

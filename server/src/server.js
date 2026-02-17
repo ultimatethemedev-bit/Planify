@@ -7,6 +7,15 @@ import dotenv from 'dotenv'
 // Load environment variables
 dotenv.config()
 
+// Validate required env vars
+const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET']
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    console.error(`Missing required environment variable: ${envVar}`)
+    process.exit(1)
+  }
+}
+
 // Import routes
 import authRoutes from './routes/auth.js'
 import employeesRoutes from './routes/employees.js'
@@ -26,7 +35,7 @@ app.use(cors({
   origin: process.env.CLIENT_URL || ['http://localhost:5173', 'http://localhost:3000'],
   credentials: true,
 }))
-app.use(express.json())
+app.use(express.json({ limit: '10kb' }))
 
 // Health check
 app.get('/api/health', (req, res) => {

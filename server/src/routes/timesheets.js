@@ -2,9 +2,12 @@ import express from 'express'
 import Timesheet from '../models/Timesheet.js'
 import Planning from '../models/Planning.js'
 import Employee from '../models/Employee.js'
-import { auth } from '../middleware/auth.js'
+import { auth, validateObjectIds } from '../middleware/auth.js'
 
 const router = express.Router()
+
+// Validation helper
+const isValidDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v)
 
 // All routes require authentication
 router.use(auth)
@@ -41,22 +44,28 @@ router.post('/validate', async (req, res) => {
   try {
     const { weekStart } = req.body
 
+    if (!weekStart || !isValidDate(weekStart)) {
+      return res.status(400).json({ message: 'weekStart invalide (format YYYY-MM-DD requis)' })
+    }
+
     if (!req.storeId) {
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
     }
 
-    // Récupérer le planning de la semaine
-    const planning = await Planning.findOne({
-      storeId: req.storeId,
-      weekStart,
-    })
+    // Atomically mark as validated (prevents race conditions)
+    const planning = await Planning.findOneAndUpdate(
+      { storeId: req.storeId, weekStart, isValidated: { $ne: true } },
+      { $set: { isValidated: true, validatedAt: new Date() } },
+      { new: true }
+    )
 
     if (!planning) {
+      // Check if it exists but is already validated
+      const existing = await Planning.findOne({ storeId: req.storeId, weekStart })
+      if (existing?.isValidated) {
+        return res.status(400).json({ message: 'Planning déjà validé' })
+      }
       return res.status(404).json({ message: 'Planning non trouvé' })
-    }
-
-    if (planning.isValidated) {
-      return res.status(400).json({ message: 'Planning déjà validé' })
     }
 
     // Récupérer tous les employés actifs
@@ -150,11 +159,6 @@ router.post('/validate', async (req, res) => {
       timesheets.push(timesheet)
     }
 
-    // Marquer le planning comme validé
-    planning.isValidated = true
-    planning.validatedAt = new Date()
-    await planning.save()
-
     res.json({
       message: 'Planning validé',
       planning,
@@ -170,6 +174,10 @@ router.post('/validate', async (req, res) => {
 router.post('/unvalidate', async (req, res) => {
   try {
     const { weekStart } = req.body
+
+    if (!weekStart || !isValidDate(weekStart)) {
+      return res.status(400).json({ message: 'weekStart invalide (format YYYY-MM-DD requis)' })
+    }
 
     if (!req.storeId) {
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
@@ -257,7 +265,7 @@ router.get('/', async (req, res) => {
 })
 
 // GET /timesheets/employee/:employeeId - Récupérer les timesheets d'un employé
-router.get('/employee/:employeeId', async (req, res) => {
+router.get('/employee/:employeeId', validateObjectIds('employeeId'), async (req, res) => {
   try {
     const { employeeId } = req.params
     const { month, year } = req.query
@@ -287,7 +295,7 @@ router.get('/employee/:employeeId', async (req, res) => {
 })
 
 // PUT /timesheets/:employeeId/day - Mettre à jour les heures réalisées d'un jour
-router.put('/:employeeId/day', async (req, res) => {
+router.put('/:employeeId/day', validateObjectIds('employeeId'), async (req, res) => {
   try {
     const { employeeId } = req.params
     const { weekStart, date, actualStart, actualEnd, note, type } = req.body
@@ -383,7 +391,7 @@ router.put('/:employeeId/day', async (req, res) => {
 })
 
 // GET /timesheets/summary/:employeeId - Récap mensuel pour un employé
-router.get('/summary/:employeeId', async (req, res) => {
+router.get('/summary/:employeeId', validateObjectIds('employeeId'), async (req, res) => {
   try {
     const { employeeId } = req.params
     const { year, month } = req.query

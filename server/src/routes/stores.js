@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import Store from '../models/Store.js'
 import User from '../models/User.js'
 import Invitation from '../models/Invitation.js'
-import { auth, requireRole } from '../middleware/auth.js'
+import { auth, requireRole, validateObjectIds } from '../middleware/auth.js'
 
 const router = express.Router()
 router.use(auth)
@@ -108,7 +108,7 @@ router.delete('/invitations/:code', requireRole('owner'), async (req, res) => {
 })
 
 // DELETE /stores/members/:userId (owner only)
-router.delete('/members/:userId', requireRole('owner'), async (req, res) => {
+router.delete('/members/:userId', requireRole('owner'), validateObjectIds('userId'), async (req, res) => {
   try {
     if (req.params.userId === req.userId.toString()) {
       return res.status(400).json({ message: 'Vous ne pouvez pas vous retirer vous-même' })
