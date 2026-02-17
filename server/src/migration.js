@@ -11,6 +11,28 @@ export async function runMigration() {
 
   console.log('Starting multi-user migration...')
 
+  // Drop old indexes FIRST (before data migration)
+  const collections = {
+    plannings: 'userId_1_storeId_1_weekStart_1',
+    timesheets: 'userId_1_storeId_1_employeeId_1_weekStart_1',
+    employees: 'userId_1_storeId_1_isActive_1',
+  }
+
+  for (const [collName, indexName] of Object.entries(collections)) {
+    try {
+      await mongoose.connection.collection(collName).dropIndex(indexName)
+    } catch (e) {
+      // Index may not exist, that's fine
+    }
+  }
+
+  try {
+    await mongoose.connection.collection('settings').dropIndex('userId_1')
+  } catch (e) {
+    // Index may not exist
+  }
+
+  // Now migrate data
   const users = await User.find({ stores: { $exists: true, $ne: [] } })
 
   if (users.length === 0) {
@@ -35,44 +57,20 @@ export async function runMigration() {
       await store.save()
 
       // Migrate Settings: add storeId
-      const existingSettings = await Settings.findOne({ userId: user._id })
+      const existingSettings = await mongoose.connection.collection('settings').findOne({ userId: user._id })
       if (existingSettings && i === 0) {
-        // First store: update existing settings doc
         await mongoose.connection.collection('settings').updateOne(
           { _id: existingSettings._id },
           { $set: { storeId: embeddedStore._id } }
         )
       } else if (existingSettings && i > 0) {
-        // Additional stores: create a copy with default settings
-        const settingsCopy = existingSettings.toObject()
+        const settingsCopy = { ...existingSettings }
         delete settingsCopy._id
         delete settingsCopy.userId
         settingsCopy.storeId = embeddedStore._id
         await mongoose.connection.collection('settings').insertOne(settingsCopy)
       }
     }
-  }
-
-  // Drop old indexes that include userId
-  const collections = {
-    plannings: 'userId_1_storeId_1_weekStart_1',
-    timesheets: 'userId_1_storeId_1_employeeId_1_weekStart_1',
-    employees: 'userId_1_storeId_1_isActive_1',
-  }
-
-  for (const [collName, indexName] of Object.entries(collections)) {
-    try {
-      await mongoose.connection.collection(collName).dropIndex(indexName)
-    } catch (e) {
-      // Index may not exist, that's fine
-    }
-  }
-
-  // Drop old userId unique index on settings
-  try {
-    await mongoose.connection.collection('settings').dropIndex('userId_1')
-  } catch (e) {
-    // Index may not exist
   }
 
   console.log(`Migration completed: ${users.length} user(s) migrated.`)
