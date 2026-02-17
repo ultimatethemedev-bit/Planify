@@ -1,4 +1,22 @@
-import mongoose from 'mongoose'
+import mongoose, { Document } from 'mongoose'
+
+export interface IShift {
+  _id?: mongoose.Types.ObjectId
+  employeeId: mongoose.Types.ObjectId
+  date: string
+  startTime: string
+  endTime: string
+}
+
+export interface IPlanning extends Document {
+  userId?: mongoose.Types.ObjectId
+  storeId: mongoose.Types.ObjectId
+  weekStart: string
+  weekEnd: string
+  shifts: IShift[]
+  isValidated: boolean
+  validatedAt: Date | null
+}
 
 const shiftSchema = new mongoose.Schema({
   employeeId: {
@@ -7,15 +25,15 @@ const shiftSchema = new mongoose.Schema({
     required: true,
   },
   date: {
-    type: String, // Format: YYYY-MM-DD
+    type: String,
     required: true,
   },
   startTime: {
-    type: String, // Format: HH:mm ou 'CP' ou 'AM'
+    type: String,
     required: true,
   },
   endTime: {
-    type: String, // Format: HH:mm ou 'CP' ou 'AM'
+    type: String,
     required: true,
   },
 }, { _id: true })
@@ -30,15 +48,14 @@ const planningSchema = new mongoose.Schema({
     required: true,
   },
   weekStart: {
-    type: String, // Format: YYYY-MM-DD (Monday)
+    type: String,
     required: true,
   },
   weekEnd: {
-    type: String, // Format: YYYY-MM-DD (Sunday)
+    type: String,
     required: true,
   },
   shifts: [shiftSchema],
-  // Validation du planning
   isValidated: {
     type: Boolean,
     default: false,
@@ -51,7 +68,6 @@ const planningSchema = new mongoose.Schema({
   timestamps: true,
 })
 
-// Compound index for unique planning per user per store per week
 planningSchema.index({ storeId: 1, weekStart: 1 }, { unique: true })
 
-export default mongoose.model('Planning', planningSchema)
+export default mongoose.model<IPlanning>('Planning', planningSchema)

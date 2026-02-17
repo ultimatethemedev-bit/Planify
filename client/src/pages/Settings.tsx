@@ -259,13 +259,13 @@ export function Settings() {
       
       {/* Title */}
       <section className="px-6 mb-6">
-        <h1 className="text-2xl font-bold text-foreground font-heading">Réglages</h1>
+        <h1 className="text-2xl font-bold text-foreground">Réglages</h1>
       </section>
       
       {/* Team Management (owner only) */}
       {isOwner && (
         <section className="px-6 mb-8">
-          <h2 className="text-lg font-semibold mb-4 font-heading">Equipe</h2>
+          <h2 className="text-lg font-semibold mb-4">Equipe</h2>
           <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50">
             {isLoadingTeam ? (
               <div className="flex items-center justify-center py-4">
@@ -366,7 +366,7 @@ export function Settings() {
 
       {/* Store Hours */}
       <section className="px-6 mb-8">
-        <h2 className="text-lg font-semibold mb-4 font-heading">Horaires de la boutique</h2>
+        <h2 className="text-lg font-semibold mb-4">Horaires de la boutique</h2>
         <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50">
           <div className="space-y-4">
             {DAY_KEYS.map((dayKey, index) => {
@@ -434,7 +434,7 @@ export function Settings() {
       
       {/* Shift Templates */}
       <section className="px-6 mb-8">
-        <h2 className="text-lg font-semibold mb-4 font-heading">Templates horaires</h2>
+        <h2 className="text-lg font-semibold mb-4">Templates horaires</h2>
         <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50">
           <p className="text-sm text-muted-foreground mb-4">
             Définissez vos créneaux types pour les appliquer rapidement dans le planning.
@@ -495,7 +495,7 @@ export function Settings() {
       
       {/* Week Number Config */}
       <section className="px-6 mb-8">
-        <h2 className="text-lg font-semibold mb-4 font-heading">Numérotation des semaines</h2>
+        <h2 className="text-lg font-semibold mb-4">Numérotation des semaines</h2>
         <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50">
           <p className="text-sm text-muted-foreground mb-4">
             Définissez le numéro de la semaine actuelle. Les semaines suivantes seront automatiquement incrémentées.
@@ -553,7 +553,7 @@ export function Settings() {
       
       {/* Commercial Events */}
       <section className="px-6 pb-6">
-        <h2 className="text-lg font-semibold mb-4 font-heading">Événements commerciaux</h2>
+        <h2 className="text-lg font-semibold mb-4">Événements commerciaux</h2>
         
         {/* Events list */}
         <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50 mb-4">
@@ -623,7 +623,7 @@ export function Settings() {
             >
               {/* Header */}
               <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
-                <h2 className="text-xl font-semibold text-foreground font-heading">
+                <h2 className="text-xl font-semibold text-foreground">
                   {editingEvent ? 'Modifier événement' : 'Nouvel événement'}
                 </h2>
                 <button 

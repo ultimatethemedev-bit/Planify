@@ -5,14 +5,14 @@
 :root {
   --background: #F8FAFC;
   --foreground: #0F172A;
-  --primary: #3B82F6;
+  --primary: #4F46E5;
   --primary-foreground: #FFFFFF;
   --secondary: #F1F5F9;
   --secondary-foreground: #1E293B;
   --muted: #F1F5F9;
   --muted-foreground: #64748B;
-  --accent: #EFF6FF;
-  --accent-foreground: #1E40AF;
+  --accent: #EEF2FF;
+  --accent-foreground: #3730A3;
   --destructive: #EF4444;
   --card: #FFFFFF;
   --card-foreground: #0F172A;
@@ -20,10 +20,10 @@
   --popover-foreground: #0F172A;
   --border: #E2E8F0;
   --input: #FFFFFF;
-  --ring: #3B82F6;
+  --ring: #4F46E5;
   
   /* Chart colors for employees */
-  --chart-1: #3B82F6;
+  --chart-1: #4F46E5;
   --chart-2: #F472B6;
   --chart-3: #4ADE80;
   --chart-4: #FB923C;
@@ -111,7 +111,7 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--ring);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
 }
 
 /* Button press effect */

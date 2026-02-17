@@ -278,7 +278,7 @@ export function ShiftHoursModal({ employeeId, weekStart, onClose }: ShiftHoursMo
               {employee.firstName.charAt(0)}{employee.lastName.charAt(0)}
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl font-bold text-foreground font-heading truncate">
+              <h2 className="text-lg sm:text-xl font-bold text-foreground truncate">
                 {employee.firstName} {employee.lastName}
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground">{employee.weeklyHours}h/semaine</p>

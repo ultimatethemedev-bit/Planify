@@ -6,10 +6,10 @@ import { useSettingsStore } from '../../stores/settingsStore'
 import { employeesApi, settingsApi } from '../../services/api'
 
 const navItems = [
-  { path: '/', icon: 'solar:home-2-bold', label: 'Accueil' },
-  { path: '/planning', icon: 'solar:calendar-bold', label: 'Planning' },
-  { path: '/employees', icon: 'solar:users-group-rounded-bold', label: 'Employés' },
-  { path: '/settings', icon: 'solar:settings-bold', label: 'Réglages' },
+  { path: '/', icon: 'solar:home-2-linear', activeIcon: 'solar:home-2-bold', label: 'Accueil' },
+  { path: '/planning', icon: 'solar:calendar-linear', activeIcon: 'solar:calendar-bold', label: 'Planning' },
+  { path: '/employees', icon: 'solar:users-group-rounded-linear', activeIcon: 'solar:users-group-rounded-bold', label: 'Employés' },
+  { path: '/settings', icon: 'solar:settings-linear', activeIcon: 'solar:settings-bold', label: 'Réglages' },
 ]
 
 export function Layout() {
@@ -63,11 +63,14 @@ export function Layout() {
             <NavLink
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center gap-1 p-2 w-16 transition-colors ${
+              className={`flex flex-col items-center gap-1 p-2 w-16 transition-colors relative ${
                 isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Icon icon={item.icon} className="size-6" />
+              {isActive && (
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary rounded-full" />
+              )}
+              <Icon icon={isActive ? item.activeIcon : item.icon} className="size-6" />
               <span className={`text-[10px] ${isActive ? 'font-semibold' : 'font-medium'}`}>
                 {item.label}
               </span>

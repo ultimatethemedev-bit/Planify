@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { useAuthStore } from '../stores/authStore'
 import { StoreHours } from '../stores/settingsStore'
+import type { Planning, Timesheet } from '../stores/planningStore'
 
 // @ts-ignore - Vite import.meta.env
 const API_URL = import.meta.env.VITE_API_URL || '/api'
@@ -120,7 +121,7 @@ export const employeesApi = {
 
 // Planning API
 export const planningApi = {
-  getByWeek: async (weekStart: string) => {
+  getByWeek: async (weekStart: string): Promise<Planning> => {
     const { data } = await api.get(`/planning?weekStart=${weekStart}`)
     return data
   },
@@ -133,12 +134,12 @@ export const planningApi = {
       startTime: string
       endTime: string
     }>
-  }) => {
+  }): Promise<Planning> => {
     const { data } = await api.post('/planning', planningData)
     return data
   },
 
-  duplicate: async (sourceWeekStart: string, targetWeekStart: string) => {
+  duplicate: async (sourceWeekStart: string, targetWeekStart: string): Promise<Planning> => {
     const { data } = await api.post('/planning/duplicate', {
       sourceWeekStart,
       targetWeekStart,
@@ -223,22 +224,22 @@ export const settingsApi = {
 
 // Timesheets API
 export const timesheetsApi = {
-  validatePlanning: async (weekStart: string) => {
+  validatePlanning: async (weekStart: string): Promise<{ message: string; planning: Planning; timesheets: Timesheet[] }> => {
     const { data } = await api.post('/timesheets/validate', { weekStart })
     return data
   },
 
-  unvalidatePlanning: async (weekStart: string) => {
+  unvalidatePlanning: async (weekStart: string): Promise<{ message: string; planning: Planning; hadModifications: boolean; modificationsCount: number }> => {
     const { data } = await api.post('/timesheets/unvalidate', { weekStart })
     return data
   },
 
-  getByWeek: async (weekStart: string) => {
+  getByWeek: async (weekStart: string): Promise<Timesheet[]> => {
     const { data } = await api.get('/timesheets', { params: { weekStart } })
     return data
   },
 
-  getByEmployee: async (employeeId: string, month?: string, year?: string) => {
+  getByEmployee: async (employeeId: string, month?: string, year?: string): Promise<Timesheet[]> => {
     const { data } = await api.get(`/timesheets/employee/${employeeId}`, {
       params: { month, year }
     })
@@ -252,7 +253,7 @@ export const timesheetsApi = {
     actualEnd?: string
     note?: string
     type?: 'work' | 'rest' | 'cp' | 'am'
-  }) => {
+  }): Promise<Timesheet> => {
     const { data } = await api.put(`/timesheets/${employeeId}/day`, payload)
     return data
   },

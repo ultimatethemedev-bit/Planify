@@ -1,4 +1,21 @@
-import mongoose from 'mongoose'
+import mongoose, { Document } from 'mongoose'
+
+export interface IEmployee extends Document {
+  userId?: mongoose.Types.ObjectId
+  storeId: mongoose.Types.ObjectId
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  contractType: 'CDI' | 'CDD' | 'Alternant' | 'Stage'
+  weeklyHours: number
+  color: string
+  avatar: string | null
+  isActive: boolean
+  cpBalance: number
+  cpPerMonth: number
+  cpStartDate: Date
+}
 
 const employeeSchema = new mongoose.Schema({
   userId: {
@@ -56,27 +73,22 @@ const employeeSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
-  // Gestion des CP
   cpBalance: {
     type: Number,
     default: 0,
-    // Solde initial de CP au moment de la création
   },
   cpPerMonth: {
     type: Number,
     default: 2.5,
-    // CP acquis par mois (0 pour stagiaires généralement)
   },
   cpStartDate: {
     type: Date,
     default: Date.now,
-    // Date de début du comptage des CP
   },
 }, {
   timestamps: true,
 })
 
-// Index for faster queries
 employeeSchema.index({ storeId: 1, isActive: 1 })
 
-export default mongoose.model('Employee', employeeSchema)
+export default mongoose.model<IEmployee>('Employee', employeeSchema)

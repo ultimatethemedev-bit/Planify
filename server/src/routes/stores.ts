@@ -1,15 +1,16 @@
-import express from 'express'
+import express, { Request, Response } from 'express'
 import crypto from 'crypto'
 import Store from '../models/Store.js'
 import User from '../models/User.js'
 import Invitation from '../models/Invitation.js'
 import { auth, requireRole, validateObjectIds } from '../middleware/auth.js'
+import { logger } from '../utils/logger.js'
 
 const router = express.Router()
 router.use(auth)
 
 // GET /stores/current/members
-router.get('/current/members', async (req, res) => {
+router.get('/current/members', async (req: Request, res: Response) => {
   try {
     if (!req.storeId) {
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
@@ -36,24 +37,24 @@ router.get('/current/members', async (req, res) => {
 
     res.json(memberDetails)
   } catch (error) {
-    console.error('Get members error:', error)
+    logger.error({ err: error }, 'Get members error')
     res.status(500).json({ message: 'Erreur lors de la récupération des membres' })
   }
 })
 
 // POST /stores/invitations (owner only)
-router.post('/invitations', requireRole('owner'), async (req, res) => {
+router.post('/invitations', requireRole('owner'), async (req: Request, res: Response) => {
   try {
     if (!req.storeId) {
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
     }
 
     // Generate unique 6-char code
-    let code
-    let exists = true
+    let code: string | undefined
+    let exists: boolean = true
     while (exists) {
       code = crypto.randomBytes(4).toString('hex').substring(0, 6).toUpperCase()
-      exists = await Invitation.findOne({ code })
+      exists = !!(await Invitation.findOne({ code }))
     }
 
     const invitation = await Invitation.create({
@@ -67,13 +68,13 @@ router.post('/invitations', requireRole('owner'), async (req, res) => {
       expiresAt: invitation.expiresAt,
     })
   } catch (error) {
-    console.error('Create invitation error:', error)
+    logger.error({ err: error }, 'Create invitation error')
     res.status(500).json({ message: 'Erreur lors de la création de l\'invitation' })
   }
 })
 
 // GET /stores/invitations (owner only)
-router.get('/invitations', requireRole('owner'), async (req, res) => {
+router.get('/invitations', requireRole('owner'), async (req: Request, res: Response) => {
   try {
     if (!req.storeId) {
       return res.status(400).json({ message: 'Aucune boutique sélectionnée' })
@@ -87,13 +88,13 @@ router.get('/invitations', requireRole('owner'), async (req, res) => {
 
     res.json(invitations)
   } catch (error) {
-    console.error('Get invitations error:', error)
+    logger.error({ err: error }, 'Get invitations error')
     res.status(500).json({ message: 'Erreur' })
   }
 })
 
 // DELETE /stores/invitations/:code (owner only)
-router.delete('/invitations/:code', requireRole('owner'), async (req, res) => {
+router.delete('/invitations/:code', requireRole('owner'), async (req: Request, res: Response) => {
   try {
     await Invitation.findOneAndDelete({
       code: req.params.code,
@@ -102,15 +103,15 @@ router.delete('/invitations/:code', requireRole('owner'), async (req, res) => {
     })
     res.json({ message: 'Invitation révoquée' })
   } catch (error) {
-    console.error('Delete invitation error:', error)
+    logger.error({ err: error }, 'Delete invitation error')
     res.status(500).json({ message: 'Erreur' })
   }
 })
 
 // DELETE /stores/members/:userId (owner only)
-router.delete('/members/:userId', requireRole('owner'), validateObjectIds('userId'), async (req, res) => {
+router.delete('/members/:userId', requireRole('owner'), validateObjectIds('userId'), async (req: Request, res: Response) => {
   try {
-    if (req.params.userId === req.userId.toString()) {
+    if (req.params.userId === req.userId!.toString()) {
       return res.status(400).json({ message: 'Vous ne pouvez pas vous retirer vous-même' })
     }
 
@@ -126,7 +127,7 @@ router.delete('/members/:userId', requireRole('owner'), validateObjectIds('userI
 
     res.json({ message: 'Membre retiré' })
   } catch (error) {
-    console.error('Remove member error:', error)
+    logger.error({ err: error }, 'Remove member error')
     res.status(500).json({ message: 'Erreur' })
   }
 })

@@ -1,9 +1,11 @@
-import express from 'express'
+import express, { Request, Response, NextFunction } from 'express'
 import { body, validationResult } from 'express-validator'
+import mongoose from 'mongoose'
 import User from '../models/User.js'
 import Store from '../models/Store.js'
 import { auth, validateObjectIds } from '../middleware/auth.js'
 import bcrypt from 'bcryptjs'
+import { logger } from '../utils/logger.js'
 
 const router = express.Router()
 
@@ -11,19 +13,20 @@ const router = express.Router()
 router.use(auth)
 
 // Validation middleware
-const handleValidation = (req, res, next) => {
+const handleValidation = (req: Request, res: Response, next: NextFunction): void => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
-    return res.status(400).json({
+    res.status(400).json({
       message: errors.array()[0].msg,
       errors: errors.array()
     })
+    return
   }
   next()
 }
 
 // Helper: build stores array with roles for a user
-const getUserStores = async (userId) => {
+const getUserStores = async (userId: mongoose.Types.ObjectId) => {
   const stores = await Store.find({ 'members.userId': userId })
   return stores.map(s => ({
     _id: s._id,
@@ -38,33 +41,33 @@ router.put('/profile', [
   body('lastName').trim().notEmpty().withMessage('Nom requis'),
   body('email').isEmail().withMessage('Email invalide'),
   handleValidation,
-], async (req, res) => {
+], async (req: Request, res: Response) => {
   try {
     const { firstName, lastName, email } = req.body
 
-    if (email !== req.user.email) {
+    if (email !== req.user!.email) {
       const existingUser = await User.findOne({ email })
       if (existingUser) {
         return res.status(400).json({ message: 'Cet email est déjà utilisé' })
       }
     }
 
-    req.user.firstName = firstName
-    req.user.lastName = lastName
-    req.user.email = email
-    await req.user.save()
+    req.user!.firstName = firstName
+    req.user!.lastName = lastName
+    req.user!.email = email
+    await req.user!.save()
 
-    const stores = await getUserStores(req.userId)
+    const stores = await getUserStores(req.userId!)
 
     res.json({
       message: 'Profil mis à jour avec succès',
       user: {
-        ...req.user.toJSON(),
+        ...req.user!.toJSON(),
         stores,
       },
     })
   } catch (error) {
-    console.error('Update profile error:', error)
+    logger.error({ err: error }, 'Update profile error')
     res.status(500).json({ message: 'Erreur lors de la mise à jour du profil' })
   }
 })
@@ -80,21 +83,21 @@ router.put('/password', [
     return true
   }),
   handleValidation,
-], async (req, res) => {
+], async (req: Request, res: Response) => {
   try {
     const { oldPassword, newPassword } = req.body
 
-    const isMatch = await bcrypt.compare(oldPassword, req.user.password)
+    const isMatch = await bcrypt.compare(oldPassword, req.user!.password)
     if (!isMatch) {
       return res.status(400).json({ message: 'Ancien mot de passe incorrect' })
     }
 
-    req.user.password = newPassword
-    await req.user.save()
+    req.user!.password = newPassword
+    await req.user!.save()
 
     res.json({ message: 'Mot de passe modifié avec succès' })
   } catch (error) {
-    console.error('Update password error:', error)
+    logger.error({ err: error }, 'Update password error')
     res.status(500).json({ message: 'Erreur lors du changement de mot de passe' })
   }
 })
@@ -103,7 +106,7 @@ router.put('/password', [
 router.put('/stores/:storeId', validateObjectIds('storeId'), [
   body('name').trim().notEmpty().withMessage('Nom de la boutique requis'),
   handleValidation,
-], async (req, res) => {
+], async (req: Request, res: Response) => {
   try {
     const { storeId } = req.params
     const { name } = req.body
@@ -118,7 +121,7 @@ router.put('/stores/:storeId', validateObjectIds('storeId'), [
     }
 
     const member = store.members.find(
-      m => m.userId.toString() === req.userId.toString()
+      m => m.userId.toString() === req.userId!.toString()
     )
     if (!member || member.role !== 'owner') {
       return res.status(403).json({ message: 'Seul le propriétaire peut renommer la boutique' })
@@ -127,17 +130,17 @@ router.put('/stores/:storeId', validateObjectIds('storeId'), [
     store.name = name
     await store.save()
 
-    const stores = await getUserStores(req.userId)
+    const stores = await getUserStores(req.userId!)
 
     res.json({
       message: 'Boutique renommée avec succès',
       user: {
-        ...req.user.toJSON(),
+        ...req.user!.toJSON(),
         stores,
       },
     })
   } catch (error) {
-    console.error('Update store error:', error)
+    logger.error({ err: error }, 'Update store error')
     res.status(500).json({ message: 'Erreur lors du renommage de la boutique' })
   }
 })

@@ -7,8 +7,9 @@ import { Header } from '../components/layout/Header'
 import { useAuthStore } from '../stores/authStore'
 import { useEmployeesStore } from '../stores/employeesStore'
 import { useSettingsStore } from '../stores/settingsStore'
-import { usePlanningStore } from '../stores/planningStore'
+import { usePlanningStore, type Planning } from '../stores/planningStore'
 import { planningApi } from '../services/api'
+import { DashboardStatSkeleton, WeekPreviewSkeleton } from '../components/ui/Skeleton'
 
 export function Dashboard() {
   const navigate = useNavigate()
@@ -16,8 +17,8 @@ export function Dashboard() {
   const { employees } = useEmployeesStore()
   const { events, weekNumberConfig } = useSettingsStore()
   const { setCurrentWeek } = usePlanningStore()
-  
-  const [weekPlanning, setWeekPlanning] = useState<any>(null)
+
+  const [weekPlanning, setWeekPlanning] = useState<Planning | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   
   const currentStore = getCurrentStore()
@@ -86,7 +87,7 @@ export function Dashboard() {
     if (!weekPlanning?.shifts) return null
     const dateStr = format(date, 'yyyy-MM-dd')
     return weekPlanning.shifts.find(
-      (s: any) => s.employeeId === employeeId && s.date === dateStr
+      (s) => s.employeeId === employeeId && s.date === dateStr
     )
   }
   
@@ -101,7 +102,7 @@ export function Dashboard() {
       
       {/* Greeting */}
       <section className="px-6 mb-6">
-        <h1 className="text-2xl font-bold text-foreground font-heading">
+        <h1 className="text-2xl font-bold text-foreground">
           Bonjour, {user?.firstName || 'Manager'} 👋
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -171,13 +172,24 @@ export function Dashboard() {
       <section className="px-6 mt-8">
         <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold font-heading">Cette semaine</h2>
+            <h2 className="text-lg font-semibold">Cette semaine</h2>
             <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-1 rounded-md">
               {format(weekStart, 'd', { locale: fr })} - {format(weekEnd, 'd MMM', { locale: fr })}
             </span>
           </div>
           
-          {employees.length === 0 ? (
+          {isLoading ? (
+            <>
+              <WeekPreviewSkeleton />
+              <button
+                onClick={() => goToWeek(weekStart)}
+                className="w-full mt-5 text-sm text-primary font-semibold flex items-center justify-center gap-1 hover:opacity-80 transition-opacity"
+              >
+                Modifier le planning
+                <Icon icon="solar:arrow-right-linear" className="size-4" />
+              </button>
+            </>
+          ) : employees.length === 0 ? (
             <div className="text-center py-8">
               <div className="size-16 mx-auto mb-4 bg-secondary rounded-full flex items-center justify-center">
                 <Icon icon="solar:users-group-rounded-bold" className="size-8 text-muted-foreground" />
@@ -238,18 +250,16 @@ export function Dashboard() {
                           <div 
                             key={dayIndex} 
                             className={`h-7 rounded flex items-center justify-center text-[9px] font-medium ${
-                              isLoading ? 'bg-secondary animate-pulse' :
                               isCP ? 'bg-orange-100 text-orange-600' :
                               isRestDay ? 'bg-secondary text-muted-foreground' :
                               hasShift ? 'text-white' : 'bg-secondary'
                             } ${isToday ? 'ring-1 ring-primary' : ''}`}
                             style={hasShift ? { backgroundColor: employee.color + '90' } : {}}
                           >
-                            {!isLoading && (
-                              isCP ? 'CP' :
+                            {isCP ? 'CP' :
                               isRestDay ? 'Repos' :
                               hasShift ? `${shift.startTime}-${shift.endTime}` : ''
-                            )}
+                            }
                           </div>
                         )
                       })}
@@ -280,7 +290,7 @@ export function Dashboard() {
       <section className="px-6 mt-6 pb-6">
         <div className="bg-card rounded-xl p-5 shadow-sm border border-border/50">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold font-heading">
+            <h2 className="text-lg font-semibold">
               {format(today, 'MMMM yyyy', { locale: fr })}
             </h2>
             <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-1 rounded-md">

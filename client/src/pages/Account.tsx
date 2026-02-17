@@ -3,6 +3,7 @@ import { Icon } from '@iconify/react'
 import { useAuthStore } from '../stores/authStore'
 import { api } from '../services/api'
 import toast from 'react-hot-toast'
+import { getErrorMessage } from '../utils/errors'
 
 export function Account() {
   const { user, updateUser } = useAuthStore()
@@ -42,8 +43,8 @@ export function Account() {
       
       updateUser(response.data.user)
       toast.success('Profil mis à jour avec succès')
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erreur lors de la mise à jour du profil')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur lors de la mise à jour du profil'))
     } finally {
       setIsUpdatingProfile(false)
     }
@@ -76,8 +77,8 @@ export function Account() {
       setOldPassword('')
       setNewPassword('')
       setConfirmPassword('')
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erreur lors du changement de mot de passe')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur lors du changement de mot de passe'))
     } finally {
       setIsUpdatingPassword(false)
     }
@@ -98,8 +99,8 @@ export function Account() {
       toast.success('Boutique renommée avec succès')
       setEditingStoreId(null)
       setEditingStoreName('')
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erreur lors du renommage de la boutique')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur lors du renommage de la boutique'))
     } finally {
       setIsUpdatingStore(false)
     }

@@ -1,13 +1,46 @@
-import mongoose from 'mongoose'
+import mongoose, { Document } from 'mongoose'
 
-// Historique des modifications d'un jour
+interface IModification {
+  changedAt: Date
+  field: string
+  from?: string
+  to?: string
+}
+
+export interface IDayEntry {
+  date: string
+  type: 'work' | 'rest' | 'cp' | 'am'
+  plannedStart: string | null
+  plannedEnd: string | null
+  plannedMinutes: number
+  actualStart: string | null
+  actualEnd: string | null
+  actualMinutes: number
+  deltaMinutes: number
+  note: string
+  modifications: IModification[]
+}
+
+export interface ITimesheet extends Document {
+  userId?: mongoose.Types.ObjectId
+  storeId: mongoose.Types.ObjectId
+  employeeId: mongoose.Types.ObjectId
+  weekStart: string
+  weekEnd: string
+  days: IDayEntry[]
+  totalPlannedMinutes: number
+  totalActualMinutes: number
+  totalDeltaMinutes: number
+  recalculateTotals(): ITimesheet
+}
+
 const modificationSchema = new mongoose.Schema({
   changedAt: {
     type: Date,
     default: Date.now,
   },
   field: {
-    type: String, // 'actualStart', 'actualEnd', 'type'
+    type: String,
     required: true,
   },
   from: {
@@ -18,18 +51,16 @@ const modificationSchema = new mongoose.Schema({
   },
 }, { _id: false })
 
-// Données d'un jour
 const dayEntrySchema = new mongoose.Schema({
   date: {
-    type: String, // Format: YYYY-MM-DD
+    type: String,
     required: true,
   },
   type: {
     type: String,
-    enum: ['work', 'rest', 'cp', 'am'], // travail, repos, congé payé, arrêt maladie
+    enum: ['work', 'rest', 'cp', 'am'],
     default: 'work',
   },
-  // Heures prévues (snapshot du planning validé)
   plannedStart: {
     type: String,
     default: null,
@@ -42,7 +73,6 @@ const dayEntrySchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  // Heures réalisées (modifiables après validation)
   actualStart: {
     type: String,
     default: null,
@@ -55,18 +85,15 @@ const dayEntrySchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  // Delta en minutes (actualMinutes - plannedMinutes)
   deltaMinutes: {
     type: Number,
     default: 0,
   },
-  // Note optionnelle (retard, heures supp, etc.)
   note: {
     type: String,
     trim: true,
     default: '',
   },
-  // Historique des modifications
   modifications: [modificationSchema],
 }, { _id: false })
 
@@ -84,18 +111,15 @@ const timesheetSchema = new mongoose.Schema({
     ref: 'Employee',
     required: true,
   },
-  // Semaine concernée
   weekStart: {
-    type: String, // Format: YYYY-MM-DD (Lundi)
+    type: String,
     required: true,
   },
   weekEnd: {
-    type: String, // Format: YYYY-MM-DD (Dimanche)
+    type: String,
     required: true,
   },
-  // Données par jour (7 jours)
   days: [dayEntrySchema],
-  // Totaux de la semaine
   totalPlannedMinutes: {
     type: Number,
     default: 0,
@@ -112,26 +136,24 @@ const timesheetSchema = new mongoose.Schema({
   timestamps: true,
 })
 
-// Index unique par employé par semaine par boutique
 timesheetSchema.index({ storeId: 1, employeeId: 1, weekStart: 1 }, { unique: true })
 
-// Méthode pour recalculer les totaux
-timesheetSchema.methods.recalculateTotals = function() {
+timesheetSchema.methods.recalculateTotals = function(this: ITimesheet): ITimesheet {
   let totalPlanned = 0
   let totalActual = 0
-  
+
   this.days.forEach(day => {
     if (day.type === 'work') {
       totalPlanned += day.plannedMinutes || 0
       totalActual += day.actualMinutes || 0
     }
   })
-  
+
   this.totalPlannedMinutes = totalPlanned
   this.totalActualMinutes = totalActual
   this.totalDeltaMinutes = totalActual - totalPlanned
-  
+
   return this
 }
 
-export default mongoose.model('Timesheet', timesheetSchema)
+export default mongoose.model<ITimesheet>('Timesheet', timesheetSchema)

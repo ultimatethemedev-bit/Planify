@@ -1,4 +1,15 @@
-import mongoose from 'mongoose'
+import mongoose, { Document } from 'mongoose'
+
+export interface IStoreMember {
+  userId: mongoose.Types.ObjectId
+  role: 'owner' | 'member'
+  joinedAt: Date
+}
+
+export interface IStore extends Document {
+  name: string
+  members: IStoreMember[]
+}
 
 const memberSchema = new mongoose.Schema({
   userId: {
@@ -30,4 +41,4 @@ const storeSchema = new mongoose.Schema({
 
 storeSchema.index({ 'members.userId': 1 })
 
-export default mongoose.model('Store', storeSchema)
+export default mongoose.model<IStore>('Store', storeSchema)

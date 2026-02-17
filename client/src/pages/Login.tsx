@@ -5,6 +5,7 @@ import { Icon } from '@iconify/react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../stores/authStore'
 import { authApi } from '../services/api'
+import { getErrorMessage } from '../utils/errors'
 
 interface LoginForm {
   email: string
@@ -26,29 +27,29 @@ export function Login() {
       login(response.user, response.token)
       toast.success('Connexion réussie !')
       navigate('/')
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erreur de connexion')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur de connexion'))
     } finally {
       setIsLoading(false)
     }
   }
   
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-center px-6 py-12">
+    <div className="min-h-screen bg-secondary/50 flex flex-col justify-center px-6 py-12">
       {/* Logo */}
       <div className="flex items-center justify-center gap-3 mb-8">
-        <div className="size-12 bg-primary rounded-xl flex items-center justify-center text-primary-foreground">
-          <Icon icon="solar:calendar-mark-bold" className="size-7" />
+        <div className="size-10 bg-primary rounded-md flex items-center justify-center text-primary-foreground">
+          <Icon icon="solar:calendar-mark-bold" className="size-6" />
         </div>
-        <span className="text-3xl font-bold text-primary font-heading tracking-tight">
+        <span className="text-3xl font-bold text-primary tracking-tight">
           Planify
         </span>
       </div>
-      
+
       {/* Form Card */}
-      <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/50 max-w-md mx-auto w-full">
-        <h1 className="text-2xl font-bold text-foreground font-heading text-center mb-2">
-          Bon retour ! 👋
+      <div className="bg-card rounded-xl p-6 shadow-md border border-border max-w-md mx-auto w-full">
+        <h1 className="text-2xl font-bold text-foreground text-center mb-2">
+          Bon retour
         </h1>
         <p className="text-muted-foreground text-center mb-6">
           Connectez-vous pour gérer votre planning
@@ -61,14 +62,14 @@ export function Login() {
             </label>
             <div className="relative">
               <Icon 
-                icon="solar:letter-bold" 
+                icon="solar:letter-linear" 
                 className="size-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" 
               />
               <input
                 type="email"
                 autoComplete="email"
                 placeholder="exemple@email.com"
-                className={`w-full pl-12 pr-4 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground ${
+                className={`w-full pl-12 pr-4 py-3 bg-input border rounded-md text-foreground placeholder:text-muted-foreground ${
                   errors.email ? 'border-destructive' : 'border-border'
                 }`}
                 {...register('email', { 
@@ -91,14 +92,14 @@ export function Login() {
             </label>
             <div className="relative">
               <Icon 
-                icon="solar:lock-keyhole-bold" 
+                icon="solar:lock-keyhole-linear" 
                 className="size-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" 
               />
               <input
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 placeholder="••••••••"
-                className={`w-full pl-12 pr-12 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground ${
+                className={`w-full pl-12 pr-12 py-3 bg-input border rounded-md text-foreground placeholder:text-muted-foreground ${
                   errors.password ? 'border-destructive' : 'border-border'
                 }`}
                 {...register('password', { 
@@ -128,7 +129,7 @@ export function Login() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-xl font-semibold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-md font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>

@@ -60,16 +60,16 @@ export function Header({ showAvatar = true, rightContent }: HeaderProps) {
   }
   
   return (
-    <header className="flex items-center justify-between px-6 pt-6 pb-4 sticky top-0 z-10 bg-background/80 backdrop-blur-md">
+    <header className="flex items-center justify-between px-6 py-3 sticky top-0 z-10 bg-background border-b border-border/50">
       {/* Logo - Clic retourne au Dashboard */}
       <button 
         onClick={() => navigate('/')}
         className="flex items-center gap-2 hover:opacity-80 transition-opacity"
       >
-        <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
+        <div className="size-8 bg-primary rounded-md flex items-center justify-center text-primary-foreground">
           <Icon icon="solar:calendar-mark-bold" className="size-5" />
         </div>
-        <span className="text-xl font-bold text-primary font-heading tracking-tight">
+        <span className="text-xl font-bold text-primary tracking-tight">
           Planify
         </span>
       </button>
@@ -94,7 +94,7 @@ export function Header({ showAvatar = true, rightContent }: HeaderProps) {
           
           {/* Menu déroulant */}
           {showMenu && (
-            <div className="absolute right-0 top-12 w-64 bg-card rounded-xl shadow-lg border border-border py-2 animate-fade-in z-50">
+            <div className="absolute right-0 top-12 w-64 bg-card rounded-lg shadow-lg border border-border py-2 animate-fade-in z-50">
               {/* Info utilisateur */}
               <div className="px-4 py-3 border-b border-border">
                 <p className="font-semibold text-foreground text-sm">
@@ -121,7 +121,7 @@ export function Header({ showAvatar = true, rightContent }: HeaderProps) {
                       className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <Icon icon="solar:shop-2-bold" className="size-5 text-muted-foreground" />
+                        <Icon icon="solar:shop-2-linear" className="size-5 text-muted-foreground" />
                         Changer de boutique
                       </div>
                       <Icon 
@@ -163,7 +163,7 @@ export function Header({ showAvatar = true, rightContent }: HeaderProps) {
                   }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
                 >
-                  <Icon icon="solar:user-id-bold" className="size-5 text-muted-foreground" />
+                  <Icon icon="solar:user-id-linear" className="size-5 text-muted-foreground" />
                   Mon compte
                 </button>
                 
@@ -174,7 +174,7 @@ export function Header({ showAvatar = true, rightContent }: HeaderProps) {
                   }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
                 >
-                  <Icon icon="solar:question-circle-bold" className="size-5 text-muted-foreground" />
+                  <Icon icon="solar:question-circle-linear" className="size-5 text-muted-foreground" />
                   Aide
                 </button>
               </div>
@@ -185,7 +185,7 @@ export function Header({ showAvatar = true, rightContent }: HeaderProps) {
                   onClick={handleLogout}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
                 >
-                  <Icon icon="solar:logout-2-bold" className="size-5" />
+                  <Icon icon="solar:logout-2-linear" className="size-5" />
                   Déconnexion
                 </button>
               </div>

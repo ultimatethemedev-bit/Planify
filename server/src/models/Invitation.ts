@@ -1,4 +1,13 @@
-import mongoose from 'mongoose'
+import mongoose, { Document } from 'mongoose'
+
+export interface IInvitation extends Document {
+  code: string
+  storeId: mongoose.Types.ObjectId
+  createdBy: mongoose.Types.ObjectId
+  expiresAt: Date
+  usedBy: mongoose.Types.ObjectId | null
+  usedAt: Date | null
+}
 
 const invitationSchema = new mongoose.Schema({
   code: {
@@ -37,4 +46,4 @@ const invitationSchema = new mongoose.Schema({
 
 invitationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 30 * 24 * 3600 })
 
-export default mongoose.model('Invitation', invitationSchema)
+export default mongoose.model<IInvitation>('Invitation', invitationSchema)

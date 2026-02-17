@@ -8,11 +8,14 @@ import { useEmployeesStore, Employee } from '../stores/employeesStore'
 import { usePlanningStore } from '../stores/planningStore'
 import { employeesApi } from '../services/api'
 import { EMPLOYEE_COLORS, calculateEmployeeCP } from '../utils/planning'
+import { useDebounce } from '../hooks/useDebounce'
+import { EmployeeCardSkeleton } from '../components/ui/Skeleton'
 
 export function Employees() {
   const { employees, setEmployees, deleteEmployee, setLoading, isLoading } = useEmployeesStore()
   const { planning } = usePlanningStore()
   const [searchQuery, setSearchQuery] = useState('')
+  const debouncedSearch = useDebounce(searchQuery, 300)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [detailsEmployee, setDetailsEmployee] = useState<Employee | null>(null)
@@ -36,12 +39,15 @@ export function Employees() {
     return () => { cancelled = true }
   }, [])
   
-  // Filter employees by search
-  const filteredEmployees = employees.filter((emp) => {
-    const fullName = `${emp.firstName} ${emp.lastName}`.toLowerCase()
-    const query = searchQuery.toLowerCase()
-    return fullName.includes(query) || emp.email.toLowerCase().includes(query)
-  })
+  // Filter employees by search (debounced)
+  const filteredEmployees = useMemo(() => {
+    const query = debouncedSearch.toLowerCase()
+    if (!query) return employees
+    return employees.filter((emp) => {
+      const fullName = `${emp.firstName} ${emp.lastName}`.toLowerCase()
+      return fullName.includes(query) || emp.email.toLowerCase().includes(query)
+    })
+  }, [employees, debouncedSearch])
   
   // Calculate CP for each employee
   const employeeCPs = useMemo(() => {
@@ -120,8 +126,10 @@ export function Employees() {
       {/* Employees List */}
       <section className="px-6 pb-6">
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Icon icon="solar:spinner-bold" className="size-8 text-primary animate-spin" />
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <EmployeeCardSkeleton key={i} />
+            ))}
           </div>
         ) : filteredEmployees.length === 0 ? (
           <div className="text-center py-12">

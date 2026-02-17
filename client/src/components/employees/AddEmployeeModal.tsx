@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { useEmployeesStore, Employee } from '../../stores/employeesStore'
 import { employeesApi } from '../../services/api'
 import { EMPLOYEE_COLORS } from '../../utils/planning'
+import { getErrorMessage } from '../../utils/errors'
 
 interface AddEmployeeModalProps {
   employee?: Employee | null
@@ -128,8 +129,8 @@ export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
         toast.success('Employé ajouté')
       }
       onClose()
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Une erreur est survenue')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Une erreur est survenue'))
     } finally {
       setIsLoading(false)
     }
@@ -146,7 +147,7 @@ export function AddEmployeeModal({ employee, onClose }: AddEmployeeModalProps) {
       >
         {/* Header */}
         <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
-          <h2 className="text-xl font-semibold text-foreground font-heading">
+          <h2 className="text-xl font-semibold text-foreground">
             {isEditing ? 'Modifier employé' : 'Nouvel employé'}
           </h2>
           <button 

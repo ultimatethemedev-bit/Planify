@@ -1,4 +1,19 @@
-import mongoose from 'mongoose'
+import mongoose, { Document } from 'mongoose'
+
+export interface ISettings extends Document {
+  storeId: mongoose.Types.ObjectId
+  storeHours: Record<string, { isOpen: boolean; openTime: string; closeTime: string }>
+  events: {
+    _id: mongoose.Types.ObjectId
+    name: string
+    emoji: string
+    startDate: string
+    endDate: string
+    color: string
+  }[]
+  shiftTemplates: { name: string; startTime: string; endTime: string }[]
+  weekNumberConfig: { referenceDate: string; referenceWeekNumber: number }
+}
 
 const dayHoursSchema = new mongoose.Schema({
   isOpen: {
@@ -22,9 +37,9 @@ const storeHoursSchema = new mongoose.Schema({
   thursday: { type: dayHoursSchema, default: () => ({}) },
   friday: { type: dayHoursSchema, default: () => ({}) },
   saturday: { type: dayHoursSchema, default: () => ({}) },
-  sunday: { 
-    type: dayHoursSchema, 
-    default: () => ({ isOpen: true, openTime: '10:00', closeTime: '19:00' }) 
+  sunday: {
+    type: dayHoursSchema,
+    default: () => ({ isOpen: true, openTime: '10:00', closeTime: '19:00' }),
   },
 }, { _id: false })
 
@@ -39,11 +54,11 @@ const commercialEventSchema = new mongoose.Schema({
     default: '🔥',
   },
   startDate: {
-    type: String, // Format: YYYY-MM-DD
+    type: String,
     required: true,
   },
   endDate: {
-    type: String, // Format: YYYY-MM-DD
+    type: String,
     required: true,
   },
   color: {
@@ -107,4 +122,4 @@ const settingsSchema = new mongoose.Schema({
   timestamps: true,
 })
 
-export default mongoose.model('Settings', settingsSchema)
+export default mongoose.model<ISettings>('Settings', settingsSchema)

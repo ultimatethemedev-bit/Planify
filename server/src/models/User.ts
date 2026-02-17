@@ -1,5 +1,19 @@
-import mongoose from 'mongoose'
+import mongoose, { Document, Model } from 'mongoose'
 import bcrypt from 'bcryptjs'
+
+export interface IUser extends Document {
+  email: string
+  password: string
+  firstName: string
+  lastName: string
+  companyName?: string
+  stores: { _id: mongoose.Types.ObjectId; name: string }[]
+  currentStoreId: mongoose.Types.ObjectId | null
+  createdAt: Date
+  updatedAt: Date
+  comparePassword(candidatePassword: string): Promise<boolean>
+  toJSON(): Record<string, unknown>
+}
 
 const storeSchema = new mongoose.Schema({
   name: {
@@ -34,12 +48,10 @@ const userSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  // Anciennes données (pour compatibilité)
   companyName: {
     type: String,
     trim: true,
   },
-  // Nouvelles données multi-boutiques
   stores: [storeSchema],
   currentStoreId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -49,25 +61,22 @@ const userSchema = new mongoose.Schema({
   timestamps: true,
 })
 
-// Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next()
-  
+
   const salt = await bcrypt.genSalt(10)
   this.password = await bcrypt.hash(this.password, salt)
   next()
 })
 
-// Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password)
 }
 
-// Remove password from JSON output
 userSchema.methods.toJSON = function() {
   const user = this.toObject()
   delete user.password
   return user
 }
 
-export default mongoose.model('User', userSchema)
+export default mongoose.model<IUser>('User', userSchema)

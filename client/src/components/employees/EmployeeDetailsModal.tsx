@@ -5,6 +5,7 @@ import { fr } from 'date-fns/locale'
 import { timesheetsApi } from '../../services/api'
 import { useSettingsStore } from '../../stores/settingsStore'
 import toast from 'react-hot-toast'
+import { getErrorMessage } from '../../utils/errors'
 
 interface Employee {
   _id: string
@@ -90,7 +91,7 @@ export function EmployeeDetailsModal({ employee, onClose }: EmployeeDetailsModal
       const data = await timesheetsApi.getSummary(employee._id, currentYear, currentMonth)
       setWeeks(data.weeks)
       setSummary(data.summary)
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching timesheet summary:', error)
       toast.error('Erreur lors du chargement')
     } finally {

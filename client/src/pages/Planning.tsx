@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { format, addDays, addWeeks, differenceInWeeks, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { usePlanningStore } from '../stores/planningStore'
+import { usePlanningStore, type Shift } from '../stores/planningStore'
 import { useEmployeesStore } from '../stores/employeesStore'
 import { useSettingsStore, StoreHours } from '../stores/settingsStore'
 import { ShiftHoursModal } from '../components/planning/ShiftHoursModal'
@@ -12,6 +12,7 @@ import { calculateWeeklyHours, getWeekDays, getColorClasses, DAYS_SHORT_FR } fro
 import { checkLegalAlerts, hasAlertForDay } from '../utils/legalAlerts'
 import { timesheetsApi } from '../services/api'
 import toast from 'react-hot-toast'
+import { getErrorMessage } from '../utils/errors'
 
 export function Planning() {
   const navigate = useNavigate()
@@ -28,7 +29,7 @@ export function Planning() {
   const [showUnvalidateModal, setShowUnvalidateModal] = useState(false)
   
   // États pour le drag & drop
-  const [draggedShift, setDraggedShift] = useState<{ employeeId: string; date: string; shift: any } | null>(null)
+  const [draggedShift, setDraggedShift] = useState<{ employeeId: string; date: string; shift: Shift } | null>(null)
   const [dropTarget, setDropTarget] = useState<{ employeeId: string; date: string } | null>(null)
   
   const weekDays = getWeekDays(currentWeekStart)
@@ -86,8 +87,8 @@ export function Planning() {
       setPlanning(result.planning)
       setTimesheets(result.timesheets)
       toast.success('Planning validé ! Les heures sont maintenant trackées.')
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erreur lors de la validation')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur lors de la validation'))
     } finally {
       setIsValidating(false)
     }
@@ -109,8 +110,8 @@ export function Planning() {
       } else {
         toast.success('Planning dévalidé. Vous pouvez maintenant le modifier.')
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erreur lors de la dévalidation')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur lors de la dévalidation'))
     } finally {
       setIsUnvalidating(false)
     }
@@ -256,7 +257,7 @@ export function Planning() {
       // Supprimer les shifts existants pour les employés concernés
       const employeeIds = new Set(planning.shifts.map(s => s.employeeId))
       const otherShifts = (existingNextWeekPlanning?.shifts || [])
-        .filter((shift: any) => !employeeIds.has(shift.employeeId))
+        .filter((shift) => !employeeIds.has(shift.employeeId))
       
       // Remplacer les shifts (on garde les autres employés + on ajoute les shifts dupliqués)
       const response = await planningApi.createOrUpdate({
@@ -398,7 +399,7 @@ export function Planning() {
   }
   
   // Fonctions drag & drop
-  const handleDragStart = (e: React.DragEvent, employeeId: string, dateStr: string, shift: any) => {
+  const handleDragStart = (e: React.DragEvent, employeeId: string, dateStr: string, shift: Shift) => {
     // Bloquer le drag si planning validé
     if (planning?.isValidated) {
       e.preventDefault()
@@ -519,7 +520,7 @@ export function Planning() {
             <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
               <Icon icon="solar:calendar-mark-bold" className="size-5" />
             </div>
-            <span className="text-lg font-bold text-primary font-heading tracking-tight hidden sm:block">
+            <span className="text-lg font-bold text-primary tracking-tight hidden sm:block">
               Planify
             </span>
           </button>

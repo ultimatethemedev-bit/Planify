@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { Icon } from '@iconify/react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../stores/authStore'
 import { authApi } from '../services/api'
+import { getErrorMessage } from '../utils/errors'
+import { useDebounce } from '../hooks/useDebounce'
 
 interface RegisterForm {
   firstName: string
@@ -29,10 +31,11 @@ export function Register() {
   const { register, handleSubmit, watch, formState: { errors }, setValue } = useForm<RegisterForm>()
   const password = watch('password')
   const invitationCode = watch('invitationCode')
+  const debouncedInvitationCode = useDebounce(invitationCode, 400)
 
-  // Check invitation code validity when it reaches 6 chars
+  // Check invitation code validity when it reaches 6 chars (debounced)
   useEffect(() => {
-    if (!invitationCode || invitationCode.length < 6) {
+    if (!debouncedInvitationCode || debouncedInvitationCode.length < 6) {
       setInvitationStoreName(null)
       return
     }
@@ -40,7 +43,7 @@ export function Register() {
     const checkCode = async () => {
       setIsCheckingCode(true)
       try {
-        const result = await authApi.checkInvitationCode(invitationCode)
+        const result = await authApi.checkInvitationCode(debouncedInvitationCode)
         setInvitationStoreName(result.storeName)
       } catch {
         setInvitationStoreName(null)
@@ -50,7 +53,7 @@ export function Register() {
     }
 
     checkCode()
-  }, [invitationCode])
+  }, [debouncedInvitationCode])
 
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true)
@@ -73,28 +76,28 @@ export function Register() {
       login(response.user, response.token)
       toast.success('Compte cree avec succes !')
       navigate('/')
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erreur lors de la creation du compte')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur lors de la creation du compte'))
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-center px-6 py-12">
+    <div className="min-h-screen bg-secondary/50 flex flex-col justify-center px-6 py-12">
       {/* Logo */}
       <div className="flex items-center justify-center gap-3 mb-8">
-        <div className="size-12 bg-primary rounded-xl flex items-center justify-center text-primary-foreground">
-          <Icon icon="solar:calendar-mark-bold" className="size-7" />
+        <div className="size-10 bg-primary rounded-md flex items-center justify-center text-primary-foreground">
+          <Icon icon="solar:calendar-mark-bold" className="size-6" />
         </div>
-        <span className="text-3xl font-bold text-primary font-heading tracking-tight">
+        <span className="text-3xl font-bold text-primary tracking-tight">
           Planify
         </span>
       </div>
 
       {/* Form Card */}
-      <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/50 max-w-md mx-auto w-full">
-        <h1 className="text-2xl font-bold text-foreground font-heading text-center mb-2">
+      <div className="bg-card rounded-xl p-6 shadow-md border border-border max-w-md mx-auto w-full">
+        <h1 className="text-2xl font-bold text-foreground text-center mb-2">
           Creer un compte
         </h1>
         <p className="text-muted-foreground text-center mb-6">
@@ -110,7 +113,7 @@ export function Register() {
               <input
                 type="text"
                 placeholder="Jean"
-                className={`w-full px-4 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground ${
+                className={`w-full px-4 py-3 bg-input border rounded-md text-foreground placeholder:text-muted-foreground ${
                   errors.firstName ? 'border-destructive' : 'border-border'
                 }`}
                 {...register('firstName', { required: 'Prenom requis' })}
@@ -127,7 +130,7 @@ export function Register() {
               <input
                 type="text"
                 placeholder="Dupont"
-                className={`w-full px-4 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground ${
+                className={`w-full px-4 py-3 bg-input border rounded-md text-foreground placeholder:text-muted-foreground ${
                   errors.lastName ? 'border-destructive' : 'border-border'
                 }`}
                 {...register('lastName', { required: 'Nom requis' })}
@@ -139,7 +142,7 @@ export function Register() {
           </div>
 
           {/* Invitation code toggle */}
-          <div className="bg-secondary/50 rounded-xl p-4">
+          <div className="bg-secondary/50 rounded-lg p-4">
             <button
               type="button"
               onClick={() => {
@@ -163,14 +166,14 @@ export function Register() {
               <div className="mt-3">
                 <div className="relative">
                   <Icon
-                    icon="solar:ticket-bold"
+                    icon="solar:ticket-linear"
                     className="size-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                   />
                   <input
                     type="text"
                     placeholder="Ex: A3X9K2"
                     maxLength={6}
-                    className={`w-full pl-12 pr-12 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground uppercase tracking-widest font-mono text-center text-lg ${
+                    className={`w-full pl-12 pr-12 py-3 bg-input border rounded-md text-foreground placeholder:text-muted-foreground uppercase tracking-widest font-mono text-center text-lg ${
                       errors.invitationCode ? 'border-destructive' : 'border-border'
                     }`}
                     {...register('invitationCode', {
@@ -208,13 +211,13 @@ export function Register() {
                 </label>
                 <div className="relative">
                   <Icon
-                    icon="solar:shop-bold"
+                    icon="solar:shop-linear"
                     className="size-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                   />
                   <input
                     type="text"
                     placeholder="Boutique 1"
-                    className={`w-full pl-12 pr-4 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground ${
+                    className={`w-full pl-12 pr-4 py-3 bg-input border rounded-md text-foreground placeholder:text-muted-foreground ${
                       errors.store1 ? 'border-destructive' : 'border-border'
                     }`}
                     {...register('store1', {
@@ -233,13 +236,13 @@ export function Register() {
                 </label>
                 <div className="relative">
                   <Icon
-                    icon="solar:shop-bold"
+                    icon="solar:shop-linear"
                     className="size-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                   />
                   <input
                     type="text"
                     placeholder="Boutique 2"
-                    className="w-full pl-12 pr-4 py-3 bg-input border border-border rounded-xl text-foreground placeholder:text-muted-foreground"
+                    className="w-full pl-12 pr-4 py-3 bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground"
                     {...register('store2')}
                   />
                 </div>
@@ -253,13 +256,13 @@ export function Register() {
             </label>
             <div className="relative">
               <Icon
-                icon="solar:letter-bold"
+                icon="solar:letter-linear"
                 className="size-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
               />
               <input
                 type="email"
                 placeholder="exemple@email.com"
-                className={`w-full pl-12 pr-4 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground ${
+                className={`w-full pl-12 pr-4 py-3 bg-input border rounded-md text-foreground placeholder:text-muted-foreground ${
                   errors.email ? 'border-destructive' : 'border-border'
                 }`}
                 {...register('email', {
@@ -282,13 +285,13 @@ export function Register() {
             </label>
             <div className="relative">
               <Icon
-                icon="solar:lock-keyhole-bold"
+                icon="solar:lock-keyhole-linear"
                 className="size-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
               />
               <input
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Minimum 6 caracteres"
-                className={`w-full pl-12 pr-12 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground ${
+                className={`w-full pl-12 pr-12 py-3 bg-input border rounded-md text-foreground placeholder:text-muted-foreground ${
                   errors.password ? 'border-destructive' : 'border-border'
                 }`}
                 {...register('password', {
@@ -321,13 +324,13 @@ export function Register() {
             </label>
             <div className="relative">
               <Icon
-                icon="solar:lock-keyhole-bold"
+                icon="solar:lock-keyhole-linear"
                 className="size-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
               />
               <input
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Confirmez votre mot de passe"
-                className={`w-full pl-12 pr-4 py-3 bg-input border rounded-xl text-foreground placeholder:text-muted-foreground ${
+                className={`w-full pl-12 pr-4 py-3 bg-input border rounded-md text-foreground placeholder:text-muted-foreground ${
                   errors.confirmPassword ? 'border-destructive' : 'border-border'
                 }`}
                 {...register('confirmPassword', {
@@ -344,7 +347,7 @@ export function Register() {
           <button
             type="submit"
             disabled={isLoading || (hasInvitationCode && !invitationStoreName)}
-            className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-xl font-semibold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-md font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
