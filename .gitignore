@@ -33,3 +33,4 @@ vite.config.js
 # Misc
 .vercel
 nul
+.claude/
